@@ -21,6 +21,58 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define BLUE 0, 0, 255
 #define YELLOW 255, 255, 0
 
+#define XSCREEN 320
+#define YSCREEN 240
+
+class PresetParameters {
+
+  public:
+    int topTemp;
+    int bottomTemp;
+    int cookTime;
+    PresetParameters(int topTempAttachTo, int bottomTempAttachTo, int cookTimeAttachTo) :
+      topTemp(topTempAttachTo), 
+      bottomTemp(bottomTempAttachTo), 
+      cookTime(cookTimeAttachTo)
+    {
+    }
+};
+
+class Settings {
+
+  public:
+    byte active;
+    int topTemp;
+    int bottomTemp;
+    int cookTime;
+    PresetParameters option1(int x, int y, int z);
+    
+} settings;
+
+class asd {
+    const byte pin;
+    int state;
+    unsigned long buttonDownMs;
+
+  public:
+    asd(byte attachTo) :
+      pin(attachTo)
+    {
+    }
+};
+
+class Button {
+    const byte pin;
+    int state;
+    unsigned long buttonDownMs;
+
+  public:
+    Button(byte attachTo) :
+      pin(attachTo)
+    {
+    }
+};
+
 void readResistiveTouch(void)
 {
     tp = myTouch.getPoint();
@@ -47,9 +99,12 @@ extern uint8_t SmallFont[];
 
 int dispX, dispY;
 
+
+
 void drawDivisions(void)
 {
     myGLCD.setColor(WHITE);
+    //myGLCD.drawRect(0, 0, 319, 239);
     myGLCD.drawLine(63, 239, 63, 0);
     myGLCD.drawLine(127, 0, 127, 47);
     myGLCD.drawLine(191, 239, 191, 0);
@@ -75,7 +130,7 @@ void drawMinusButtom(int x,int y)
   myGLCD.setColor(BLACK);
   myGLCD.fillRect(x+15, y+27, x+46, y+34);
 }
-   
+
 void setup()
 {
     Serial.begin(9600);
@@ -96,6 +151,10 @@ void setup()
     drawMinusButtom(0, 48);
     drawMinusButtom(0, 112);
     drawMinusButtom(0, 176);
+
+    settings.topTemp=320;
+    settings.cookTime=650;
+    settings.bottomTemp=230;
 }
 
 
@@ -106,7 +165,10 @@ void loop()
     //myGLCD.drawRect(100, 100, 100, 100);
     //myGLCD.drawLine(150, 60, 100, 5);
     //myGLCD.drawLine(319, 239, 318, 0);
-    //myGLCD.print("*  PRESS  *", 200, 150);
-    //myGLCD.setColor(BLUE);
+    myGLCD.setColor(WHITE);
+    myGLCD.setTextSize(6);
+    myGLCD.print(String(settings.topTemp), 76, 122-64);
+    myGLCD.print(String(settings.cookTime), 76, 122);
+    myGLCD.print(String(settings.bottomTemp), 76, 122+64);
     //myGLCD.fillRect(10, 10, 10, 10);
 }
