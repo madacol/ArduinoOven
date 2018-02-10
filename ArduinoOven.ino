@@ -24,19 +24,46 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define XSCREEN 320
 #define YSCREEN 240
 
-class PresetParameters {
+#define CONTROLBUTTONWIDTH 63
+#define CONTROLBUTTONHEIGHT 63
+#define COLUMNWIDTH 64
+
+class TempControl {
 
   public:
-    int topTemp;
-    int bottomTemp;
-    int cookTime;
-    PresetParameters(int topTempAttachTo, int bottomTempAttachTo, int cookTimeAttachTo) :
-      topTemp(topTempAttachTo), 
-      bottomTemp(bottomTempAttachTo), 
-      cookTime(cookTimeAttachTo)
+    int sensor1;
+    int sensor2;
+    int sensor3;
+    int x;
+    int y;
+    int controlTemp;
+
+    void drawMinus(void)
     {
+      myGLCD.setColor(BLUE);
+      myGLCD.fillRect(x, y, x+62, y+62);
+      myGLCD.setColor(BLACK);
+      myGLCD.fillRect(x+15, y+27, x+46, y+34);
+    };
+
+    void drawPlus(void)
+    {
+      myGLCD.setColor(RED);
+      myGLCD.fillRect(x+192, y, x+192+62, y+62);
+      myGLCD.setColor(BLACK);
+      myGLCD.fillRect(x+192+27, y+15, x+192+34, y+46);
+      myGLCD.fillRect(x+192+15, y+27, x+192+46, y+34);
+    };
+
+    void draw(void)
+    {
+      drawMinus();
+      drawPlus();
+
     }
-};
+
+} topTempControl, cookTimeControl, bottomTempControl;
+
 
 class Settings {
 
@@ -45,20 +72,29 @@ class Settings {
     int topTemp;
     int bottomTemp;
     int cookTime;
-    PresetParameters option1(int x, int y, int z);
     
 } settings;
 
-class asd {
-    const byte pin;
-    int state;
-    unsigned long buttonDownMs;
+class Profile {
+    int bottomTemp;
+    int topTemp;
+    int cookTime;
 
   public:
-    asd(byte attachTo) :
-      pin(attachTo)
+    void load(void)
     {
+      settings.bottomTemp = bottomTemp;
+      settings.topTemp = topTemp;
+      settings.cookTime = cookTime;
     }
+
+     void save(void)
+    {
+      bottomTemp = settings.bottomTemp;
+      topTemp = settings.topTemp;
+      cookTime = settings.cookTime;
+    }
+
 };
 
 class Button {
@@ -114,22 +150,16 @@ void drawDivisions(void)
     myGLCD.drawLine(0, 175, 319, 175);
 }
 
-void drawPlusButtom(int x,int y)
+
+void draw(void)
 {
-  myGLCD.setColor(RED);
-  myGLCD.fillRect(x, y, x+62, y+62);
-  myGLCD.setColor(BLACK);
-  myGLCD.fillRect(x+27, y+15, x+34, y+46);
-  myGLCD.fillRect(x+15, y+27, x+46, y+34);
+  drawDivisions();
+  //drawProfiles();
+  topTempControl.draw();
+  cookTimeControl.draw();
+  bottomTempControl.draw();
 }
 
-void drawMinusButtom(int x,int y)
-{
-  myGLCD.setColor(BLUE);
-  myGLCD.fillRect(x, y, x+62, y+62);
-  myGLCD.setColor(BLACK);
-  myGLCD.fillRect(x+15, y+27, x+46, y+34);
-}
 
 void setup()
 {
@@ -143,18 +173,18 @@ void setup()
     dispX= myGLCD.getDisplayXSize();
     dispY = myGLCD.getDisplayYSize();
     //myGLCD.setTextSize(1.5);
-    drawDivisions();
-    drawPlusButtom(192, 48);
-    drawPlusButtom(192, 112);
-    drawPlusButtom(192, 176);
     
-    drawMinusButtom(0, 48);
-    drawMinusButtom(0, 112);
-    drawMinusButtom(0, 176);
-
-    settings.topTemp=320;
-    settings.cookTime=650;
-    settings.bottomTemp=230;
+    topTempControl.x = 0;
+    topTempControl.y = 48;
+    topTempControl.controlTemp = 320;
+    
+    cookTimeControl.x = 0;
+    cookTimeControl.y = 112;
+    
+    bottomTempControl.x = 0;
+    bottomTempControl.y = 176;
+    bottomTempControl.controlTemp = 290;
+    draw();
 }
 
 
