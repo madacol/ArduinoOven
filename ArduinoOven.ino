@@ -38,12 +38,26 @@ class TempControl {
     int y;
     int controlTemp;
 
+    TempControl(int _x, int _y)
+    {
+      x = _x;
+      y = _y;
+    };
+
     void drawMinus(void)
     {
       myGLCD.setColor(BLUE);
       myGLCD.fillRect(x, y, x+62, y+62);
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(x+15, y+27, x+46, y+34);
+    };
+    
+    void drawControlTemp(void)
+    {
+      myGLCD.setColor(WHITE);
+      myGLCD.setTextSize(6);
+      myGLCD.print(String(controlTemp), x+76, y+10);
+
     };
 
     void drawPlus(void)
@@ -55,25 +69,28 @@ class TempControl {
       myGLCD.fillRect(x+192+15, y+27, x+192+46, y+34);
     };
 
+    void drawSensors(void)
+    {
+      myGLCD.setColor(WHITE);
+      myGLCD.setTextSize(3);
+      myGLCD.print(String(sensor1), x+263, y+7);
+      myGLCD.print(String(sensor2), x+282, y+35);
+      myGLCD.fillRect(x+263, y+35+18 , x+263+13, y+35+19);
+      myGLCD.fillRect(x+263, y+35+7 , x+263+13, y+35+8);
+      myGLCD.fillRect(x+263+6, y+35 , x+263+7, y+35+15);
+    };
+
     void draw(void)
     {
       drawMinus();
       drawPlus();
+      drawControlTemp();
+      drawSensors();
+    };
 
-    }
-
-} topTempControl, cookTimeControl, bottomTempControl;
-
-
-class Settings {
-
-  public:
-    byte active;
-    int topTemp;
-    int bottomTemp;
-    int cookTime;
-    
-} settings;
+} topTempControl(0,48),
+  cookTimeControl(0,112),
+  bottomTempControl(0,176);
 
 class Profile {
     int bottomTemp;
@@ -81,20 +98,31 @@ class Profile {
     int cookTime;
 
   public:
+    Profile(int _topTemp, int _cookTime, int _bottomTemp)
+    {
+      topTemp = _topTemp;
+      cookTime = _cookTime;
+      bottomTemp = _bottomTemp;
+    };
     void load(void)
     {
-      settings.bottomTemp = bottomTemp;
-      settings.topTemp = topTemp;
-      settings.cookTime = cookTime;
-    }
-
+      topTempControl.controlTemp = topTemp;
+      cookTimeControl.controlTemp = cookTime;
+      bottomTempControl.controlTemp = bottomTemp;
+    };
      void save(void)
     {
-      bottomTemp = settings.bottomTemp;
-      topTemp = settings.topTemp;
-      cookTime = settings.cookTime;
-    }
-
+      topTemp = topTempControl.controlTemp;
+      cookTime = cookTimeControl.controlTemp;
+      bottomTemp = bottomTempControl.controlTemp;
+    };
+} profiles[] = {
+  // Profile(topTemp, cookTime, bottomTemp)
+  Profile(300,200,100),
+  Profile(300,200,100),
+  Profile(300,200,100),
+  Profile(300,200,100),
+  Profile(300,200,100),
 };
 
 class Button {
@@ -111,50 +139,54 @@ class Button {
 
 void readResistiveTouch(void)
 {
-    tp = myTouch.getPoint();
-    pinMode(YP, OUTPUT);      //restore shared pins
-    pinMode(XM, OUTPUT);
-    digitalWrite(YP, HIGH);
-    digitalWrite(XM, HIGH);
+  tp = myTouch.getPoint();
+  pinMode(YP, OUTPUT);      //restore shared pins
+  pinMode(XM, OUTPUT);
+  digitalWrite(YP, HIGH);
+  digitalWrite(XM, HIGH);
 }
 
 bool ISPRESSED(void)
 {
-    readResistiveTouch();
-    return tp.z > 20 && tp.z < 1000;
+  readResistiveTouch();
+  return tp.z > 20 && tp.z < 1000;
 }
 
 void showpoint(void)
 {
-    Serial.print("\r\nx="); Serial.print(tp.x);
-    Serial.print(" y="); Serial.print(tp.y);
-    Serial.print(" z="); Serial.print(tp.z);
+  Serial.print("\r\nx="); Serial.print(tp.x);
+  Serial.print(" y="); Serial.print(tp.y);
+  Serial.print(" z="); Serial.print(tp.z);
 }
 
 extern uint8_t SmallFont[];
 
 int dispX, dispY;
-
-
+byte activeProfile;
 
 void drawDivisions(void)
 {
-    myGLCD.setColor(WHITE);
-    //myGLCD.drawRect(0, 0, 319, 239);
-    myGLCD.drawLine(63, 239, 63, 0);
-    myGLCD.drawLine(127, 0, 127, 47);
-    myGLCD.drawLine(191, 239, 191, 0);
-    myGLCD.drawLine(255, 239, 255, 0);
-    myGLCD.drawLine(0, 47, 319, 47);
-    myGLCD.drawLine(0, 111, 319, 111);
-    myGLCD.drawLine(0, 175, 319, 175);
+  myGLCD.setColor(WHITE);
+  myGLCD.drawLine(63, 239, 63, 0);
+  myGLCD.drawLine(127, 0, 127, 47);
+  myGLCD.drawLine(191, 239, 191, 0);
+  myGLCD.drawLine(255, 239, 255, 0);
+  myGLCD.drawLine(0, 47, 319, 47);
+  myGLCD.drawLine(0, 111, 319, 111);
+  myGLCD.drawLine(0, 175, 319, 175);
 }
 
+void drawProfiles(void)
+{
+  myGLCD.setColor(WHITE);
+  myGLCD.setTextSize(4);
+  myGLCD.print("0",5 , 8);
+}
 
 void draw(void)
 {
   drawDivisions();
-  //drawProfiles();
+  drawProfiles();
   topTempControl.draw();
   cookTimeControl.draw();
   bottomTempControl.draw();
@@ -163,42 +195,27 @@ void draw(void)
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("SpRvN");
-    digitalWrite(A0, HIGH);
-    pinMode(A0, OUTPUT);
-    myGLCD.InitLCD(TOUCH_ORIENTATION);
-    myGLCD.clrScr();
-    myGLCD.setFont(SmallFont);
-    dispX= myGLCD.getDisplayXSize();
-    dispY = myGLCD.getDisplayYSize();
-    //myGLCD.setTextSize(1.5);
-    
-    topTempControl.x = 0;
-    topTempControl.y = 48;
-    topTempControl.controlTemp = 320;
-    
-    cookTimeControl.x = 0;
-    cookTimeControl.y = 112;
-    
-    bottomTempControl.x = 0;
-    bottomTempControl.y = 176;
-    bottomTempControl.controlTemp = 290;
-    draw();
+  Serial.begin(9600);
+  Serial.println("SpRvN");
+  digitalWrite(A0, HIGH);
+  pinMode(A0, OUTPUT);
+  myGLCD.InitLCD(TOUCH_ORIENTATION);
+  myGLCD.clrScr();
+  myGLCD.setFont(SmallFont);
+  dispX= myGLCD.getDisplayXSize();
+  dispY = myGLCD.getDisplayYSize();
+  
+  topTempControl.sensor1 = 456;
+  topTempControl.sensor2 = 56;
+  
+  profiles[0].load();
+
+  draw();
 }
 
 
 void loop()
-{
-    
-  
-    //myGLCD.drawRect(100, 100, 100, 100);
-    //myGLCD.drawLine(150, 60, 100, 5);
-    //myGLCD.drawLine(319, 239, 318, 0);
-    myGLCD.setColor(WHITE);
-    myGLCD.setTextSize(6);
-    myGLCD.print(String(settings.topTemp), 76, 122-64);
-    myGLCD.print(String(settings.cookTime), 76, 122);
-    myGLCD.print(String(settings.bottomTemp), 76, 122+64);
-    //myGLCD.fillRect(10, 10, 10, 10);
+{  
 }
+
+
