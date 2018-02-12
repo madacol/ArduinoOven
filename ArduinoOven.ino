@@ -87,17 +87,18 @@ class TempControl {
       drawControlTemp();
       drawSensors();
     };
-
+// TempControl(x, y)
 } topTempControl(0,48),
   cookTimeControl(0,112),
   bottomTempControl(0,176);
 
 class Profile {
+
+  public:
     int bottomTemp;
     int topTemp;
     int cookTime;
 
-  public:
     Profile(int _topTemp, int _cookTime, int _bottomTemp)
     {
       topTemp = _topTemp;
@@ -118,12 +119,13 @@ class Profile {
     };
 } profiles[] = {
   // Profile(topTemp, cookTime, bottomTemp)
-  Profile(300,200,100),
-  Profile(300,200,100),
-  Profile(300,200,100),
-  Profile(300,200,100),
-  Profile(300,200,100),
+  Profile(110,120,130),
+  Profile(210,220,230),
+  Profile(310,320,330),
+  Profile(410,420,430),
+  Profile(510,520,530),
 };
+byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
 class Button {
     const byte pin;
@@ -164,6 +166,13 @@ extern uint8_t SmallFont[];
 int dispX, dispY;
 byte activeProfile;
 
+void loadProfile(byte i)
+{
+  i--;
+  profiles[i].load();
+  activeProfile = i;
+}
+
 void drawDivisions(void)
 {
   myGLCD.setColor(WHITE);
@@ -178,9 +187,23 @@ void drawDivisions(void)
 
 void drawProfiles(void)
 {
-  myGLCD.setColor(WHITE);
-  myGLCD.setTextSize(4);
-  myGLCD.print("0",5 , 8);
+  int x = 64;
+  for (int i=0; i<profilesSize; i++)
+  { 
+    if (i == activeProfile)
+    {
+      myGLCD.setColor(GREEN);
+      myGLCD.fillRect(x*i, 0, x*i+62, 46); 
+    }
+    
+    myGLCD.setColor(WHITE);
+    myGLCD.setTextSize(4);
+    myGLCD.print(String(i+1),10+x*i , 8);
+    myGLCD.setTextSize(1);
+    myGLCD.print(String(profiles[i].topTemp), 40+x*i, 6);
+    myGLCD.print(String(profiles[i].cookTime), 40+x*i, 20);
+    myGLCD.print(String(profiles[i].bottomTemp), 40+x*i, 34);
+  }
 }
 
 void draw(void)
@@ -208,7 +231,7 @@ void setup()
   topTempControl.sensor1 = 456;
   topTempControl.sensor2 = 56;
   
-  profiles[0].load();
+  loadProfile(5);
 
   draw();
 }
