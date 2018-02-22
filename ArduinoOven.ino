@@ -1,17 +1,30 @@
 #define  TOUCH_ORIENTATION  LANDSCAPE
 #include <Adafruit_GFX.h>
-#include <TouchScreen.h>
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
+
+#include "max6675.h"
+#define pinTopTempSensor1DO  52
+#define pinTopTempSensor1CS  50
+#define pinTopTempSensor1CLK  48
+#define pinTopTempSensor1VCC  46
+#define pinTopTempSensor1GND  44
+#define pinBottomTempSensor1DO  40
+#define pinBottomTempSensor1CS  38
+#define pinBottomTempSensor1CLK  36
+#define pinBottomTempSensor1VCC  34
+#define pinBottomTempSensor1GND  32
+
 
 // MCUFRIEND UNO shield shares pins with the TFT.   Due does NOT work
 #define YP A1   //A3 for ILI9320
 #define YM 7    //9
 #define XM A2
 #define XP 6    //8  
-
+#include <TouchScreen.h>
 TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp;                      //Touchscreen_due branch uses Point
+
 
 //Custom defines
 #define GREEN 0, 255, 0
@@ -34,14 +47,16 @@ class TempControl {
     int sensor1;
     int sensor2;
     int sensor3;
+    MAX6675 *Sensor1;
     int x;
     int y;
     int controlTemp;
 
-    TempControl(int _x, int _y)
+    TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK)
     {
       x = _x;
       y = _y;
+      Sensor1 = new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK);
     };
 
     void drawMinus(void)
@@ -87,11 +102,18 @@ class TempControl {
       drawControlTemp();
       drawSensors();
     };
-// TempControl(x, y)
-} topTempControl(0,48),
-  cookTimeControl(0,112),
-  bottomTempControl(0,176);
 
+    void readSensors(void)
+    {
+      sensor1 = Sensor1->readCelsius();
+    };
+
+// TempControl(x, y)
+} topTempControl(0,48, pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
+  cookTimeControl(0,112, 22, 23, 24),
+  bottomTempControl(0,176, pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
+
+byte activeProfile;
 class Profile {
 
   public:
@@ -127,17 +149,6 @@ class Profile {
 };
 byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
-class Button {
-    const byte pin;
-    int state;
-    unsigned long buttonDownMs;
-
-  public:
-    Button(byte attachTo) :
-      pin(attachTo)
-    {
-    }
-};
 
 void readResistiveTouch(void)
 {
@@ -160,11 +171,6 @@ void showpoint(void)
   Serial.print(" y="); Serial.print(tp.y);
   Serial.print(" z="); Serial.print(tp.z);
 }
-
-extern uint8_t SmallFont[];
-
-int dispX, dispY;
-byte activeProfile;
 
 void loadProfile(byte i)
 {
@@ -215,6 +221,7 @@ void draw(void)
   bottomTempControl.draw();
 }
 
+int dispX, dispY;
 
 void setup()
 {
@@ -224,12 +231,17 @@ void setup()
   pinMode(A0, OUTPUT);
   myGLCD.InitLCD(TOUCH_ORIENTATION);
   myGLCD.clrScr();
-  myGLCD.setFont(SmallFont);
+  //myGLCD.setFont(SmallFont);
   dispX= myGLCD.getDisplayXSize();
   dispY = myGLCD.getDisplayYSize();
+
+  pinMode(pinTopTempSensor1VCC, OUTPUT); digitalWrite(pinTopTempSensor1VCC, HIGH);
+  pinMode(pinTopTempSensor1GND, OUTPUT); digitalWrite(pinTopTempSensor1GND, LOW);
+  pinMode(pinBottomTempSensor1VCC, OUTPUT); digitalWrite(pinBottomTempSensor1VCC, HIGH);
+  pinMode(pinBottomTempSensor1GND, OUTPUT); digitalWrite(pinBottomTempSensor1GND, LOW);
   
-  topTempControl.sensor1 = 456;
-  topTempControl.sensor2 = 56;
+  topTempControl.sensor1 = 45;
+  topTempControl.sensor2 = 0;
   
   loadProfile(5);
 
@@ -238,7 +250,8 @@ void setup()
 
 
 void loop()
-{  
+{
+  delay(1000);
+  topTempControl.readSensors();  topTempControl.drawSensors();
+  bottomTempControl.readSensors();  bottomTempControl.drawSensors();
 }
-
-
