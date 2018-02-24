@@ -44,7 +44,7 @@ class TempControl {
     MAX6675 *Sensor1;
     int x;
     int y;
-    int controlTemp;
+    int setControl;
 
     TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK)
     {
@@ -65,7 +65,7 @@ class TempControl {
     {
       myGLCD.setColor(WHITE);
       myGLCD.setTextSize(6);
-      myGLCD.print(String(controlTemp), x+76, y+10);
+      myGLCD.print(String(setControl), x+76, y+10);
 
     };
 
@@ -123,15 +123,15 @@ class Profile {
     };
     void load(void)
     {
-      topTempControl.controlTemp = topTemp;
-      cookTimeControl.controlTemp = cookTime;
-      bottomTempControl.controlTemp = bottomTemp;
+      topTempControl.setControl = topTemp;
+      cookTimeControl.setControl = cookTime;
+      bottomTempControl.setControl = bottomTemp;
     };
      void save(void)
     {
-      topTemp = topTempControl.controlTemp;
-      cookTime = cookTimeControl.controlTemp;
-      bottomTemp = bottomTempControl.controlTemp;
+      topTemp = topTempControl.setControl;
+      cookTime = cookTimeControl.setControl;
+      bottomTemp = bottomTempControl.setControl;
     };
 } profiles[] = {
   // Profile(topTemp, cookTime, bottomTemp)
