@@ -34,24 +34,18 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define YELLOW 255, 255, 0
 
 
-
-class TempControl {
+class Control {
 
   public:
-    int sensor1;
-    int sensor2;
-    int sensor3;
-    MAX6675 *Sensor1;
+
     int x;
     int y;
     int setControl;
 
-    TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK)
-    {
-      x = _x;
-      y = _y;
-      Sensor1 = new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK);
-    };
+    Control(int _x, int _y):
+      x(_x),
+      y(_y)
+      {};
 
     void drawMinus(void)
     {
@@ -77,6 +71,28 @@ class TempControl {
       myGLCD.fillRect(x+192+27, y+15, x+192+34, y+46);
       myGLCD.fillRect(x+192+15, y+27, x+192+46, y+34);
     };
+
+    virtual void draw(void)
+    {
+      drawMinus();
+      drawPlus();
+      drawControlTemp();
+    };
+
+} cookTimeControl(0, 112);
+
+class TempControl : public Control {
+
+  public:
+    int sensor1;
+    int sensor2;
+    int sensor3;
+    MAX6675 *Sensor1;
+
+    TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK):
+      Control(_x, _y),
+      Sensor1(new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK))
+      {};
 
     void drawSensors(void)
     {
@@ -104,7 +120,6 @@ class TempControl {
 
 // TempControl(x, y)
 } topTempControl(0,48, pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
-  cookTimeControl(0,112, 22, 24, 26),
   bottomTempControl(0,176, pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
 byte activeProfile;
