@@ -102,7 +102,7 @@ class TempControl {
       drawSensors();
     };
 
-    void readSensors(void)
+    void updateSensors(void)
     {
       sensor1 = Sensor1->readCelsius();
     };
@@ -251,6 +251,6 @@ void setup()
 void loop()
 {
   delay(1000);
-  topTempControl.readSensors();  topTempControl.drawSensors();
-  bottomTempControl.readSensors();  bottomTempControl.drawSensors();
+  topTempControl.updateSensors();  topTempControl.drawSensors();
+  bottomTempControl.updateSensors();  bottomTempControl.drawSensors();
 }
