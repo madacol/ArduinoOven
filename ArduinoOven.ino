@@ -4,17 +4,16 @@
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 
 #include "max6675.h"
-#define pinTopTempSensor1DO  52
-#define pinTopTempSensor1CS  50
-#define pinTopTempSensor1CLK  48
-#define pinTopTempSensor1VCC  46
-#define pinTopTempSensor1GND  44
-#define pinBottomTempSensor1DO  40
-#define pinBottomTempSensor1CS  38
-#define pinBottomTempSensor1CLK  36
-#define pinBottomTempSensor1VCC  34
-#define pinBottomTempSensor1GND  32
-
+#define pinTopTempSensor1DO  20
+#define pinTopTempSensor1CS  19
+#define pinTopTempSensor1CLK  18
+#define pinTopTempSensor1VCC  17
+#define pinTopTempSensor1GND  16
+#define pinBottomTempSensor1DO  31
+#define pinBottomTempSensor1CS  29
+#define pinBottomTempSensor1CLK  27
+#define pinBottomTempSensor1VCC  25
+#define pinBottomTempSensor1GND  23
 
 // MCUFRIEND UNO shield shares pins with the TFT.   Due does NOT work
 #define YP A1   //A3 for ILI9320
@@ -110,7 +109,7 @@ class TempControl {
 
 // TempControl(x, y)
 } topTempControl(0,48, pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
-  cookTimeControl(0,112, 22, 23, 24),
+  cookTimeControl(0,112, 22, 24, 26),
   bottomTempControl(0,176, pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
 byte activeProfile;
