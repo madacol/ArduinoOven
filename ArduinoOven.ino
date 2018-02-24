@@ -1,4 +1,4 @@
-#define  TOUCH_ORIENTATION  LANDSCAPE
+#define  TOUCH_ORIENTATION  3
 #include <Adafruit_GFX.h>
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
