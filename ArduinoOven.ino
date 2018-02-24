@@ -33,12 +33,7 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define BLUE 0, 0, 255
 #define YELLOW 255, 255, 0
 
-#define XSCREEN 320
-#define YSCREEN 240
 
-#define CONTROLBUTTONWIDTH 63
-#define CONTROLBUTTONHEIGHT 63
-#define COLUMNWIDTH 64
 
 class TempControl {
 
