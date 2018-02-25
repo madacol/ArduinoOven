@@ -33,6 +33,14 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define BLUE 0, 0, 255
 #define YELLOW 255, 255, 0
 
+#define SET_CONTROL_TEXT_SIZE 5
+#define PROFILE_ID_TEXT_SIZE 4
+#define PROFILE_PARAM_TEXT_SIZE 1
+#define SENSOR_TEXT_SIZE 2
+
+int dispX, dispY;
+byte controlButtonWidth, controlButtonHeight, blockWidth, blockHeight, profileEndY;
+bool isOutline = false;
 
 class Control {
 
@@ -49,34 +57,47 @@ class Control {
 
     void drawMinus(void)
     {
+      int startX = x;
+      int startY = y;
+      int endX = startX+blockWidth-2;
+      int endY = startY+blockHeight-2;
       myGLCD.setColor(BLUE);
-      myGLCD.fillRect(x, y, x+62, y+62);
+      myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(BLACK);
-      myGLCD.fillRect(x+15, y+27, x+46, y+34);
+      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     
-    void drawControlTemp(void)
+    void drawSetControl(void)
     {
+      int startX = x+blockWidth;
+      int startY = y;
+      int endX = startX+blockWidth*2-2;
+      int endY = startY+blockHeight-2;
+      myGLCD.setColor(BLACK);
+      myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
-      myGLCD.setTextSize(6);
-      myGLCD.print(String(setControl), x+76, y+10);
-
+      myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
+      myGLCD.print(String(setControl), startX+11, startY+49);
     };
 
     void drawPlus(void)
     {
+      int startX = x+blockWidth*3;
+      int startY = y;
+      int endX = startX+blockWidth-2;
+      int endY = startY+blockHeight-2;
       myGLCD.setColor(RED);
-      myGLCD.fillRect(x+192, y, x+192+62, y+62);
+      myGLCD.fillRect(startX, startY, startX+62, endY);
       myGLCD.setColor(BLACK);
-      myGLCD.fillRect(x+192+27, y+15, x+192+34, y+46);
-      myGLCD.fillRect(x+192+15, y+27, x+192+46, y+34);
+      myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
+      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
 
     virtual void draw(void)
     {
       drawMinus();
       drawPlus();
-      drawControlTemp();
+      drawSetControl();
     };
 
 } cookTimeControl(0, 112);
@@ -96,20 +117,26 @@ class TempControl : public Control {
 
     void drawSensors(void)
     {
+      int startX = x+blockWidth*4;
+      int startY = y;
+      int endX = startX+controlButtonWidth-1;
+      int endY = startY+controlButtonHeight-1;
+      myGLCD.setColor(BLACK);
+      myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
-      myGLCD.setTextSize(3);
-      myGLCD.print(String(sensor1), x+263, y+7);
-      myGLCD.print(String(sensor2), x+282, y+35);
-      myGLCD.fillRect(x+263, y+35+18 , x+263+13, y+35+19);
-      myGLCD.fillRect(x+263, y+35+7 , x+263+13, y+35+8);
-      myGLCD.fillRect(x+263+6, y+35 , x+263+7, y+35+15);
+      myGLCD.setTextSize(SENSOR_TEXT_SIZE);
+      myGLCD.print(String(sensor1), startX+10, startY+7+10);
+      myGLCD.print(String(sensor2), startX+20+10, startY+35+10);
+      myGLCD.fillRect(startX+8, startY+35+18 , startX+8+13, startY+35+19);
+      myGLCD.fillRect(startX+8, startY+35+7 , startX+8+13, startY+35+8);
+      myGLCD.fillRect(startX+8+6, startY+35 , startX+8+7, startY+35+15);
     };
 
     void draw(void)
     {
       drawMinus();
       drawPlus();
-      drawControlTemp();
+      drawSetControl();
       drawSensors();
     };
 
@@ -118,7 +145,7 @@ class TempControl : public Control {
       sensor1 = Sensor1->readCelsius();
     };
 
-// TempControl(x, y)
+// TempControl(x, y, SensorCLK, SensorCS, SensorDO)
 } topTempControl(0,48, pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
   bottomTempControl(0,176, pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
@@ -129,6 +156,9 @@ class Profile {
     int bottomTemp;
     int topTemp;
     int cookTime;
+    bool isActive = false;
+    byte id;
+    int x, y;
 
     Profile(int _topTemp, int _cookTime, int _bottomTemp)
     {
@@ -136,11 +166,42 @@ class Profile {
       cookTime = _cookTime;
       bottomTemp = _bottomTemp;
     };
+    void draw (void)
+    {
+      int endX = x + blockWidth - 2;
+      int endY = profileEndY;
+      if (isActive)
+      {
+        myGLCD.setColor(GREEN);
+        myGLCD.fillRect(x, y, endX, endY);
+        myGLCD.setColor(BLACK);
+      }
+      else
+      {
+        myGLCD.setColor(BLACK);
+        myGLCD.fillRect(x, y, endX, endY);
+        myGLCD.setColor(WHITE);
+      }
+
+      myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
+      myGLCD.print(String(id+1), x+9 , endY-12);
+      myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
+      myGLCD.print(String(topTemp), x+38, endY-34-10);
+      myGLCD.print(String(cookTime), x+38, endY-20-10);
+      myGLCD.print(String(bottomTemp), x+38, endY-6-10);
+    };
     void load(void)
     {
       topTempControl.setControl = topTemp;
       cookTimeControl.setControl = cookTime;
       bottomTempControl.setControl = bottomTemp;
+      isActive = true;
+      draw();
+    };
+    void unload(void)
+    {
+      isActive = false;
+      draw();
     };
      void save(void)
     {
@@ -181,43 +242,41 @@ void showpoint(void)
   Serial.print(" z="); Serial.print(tp.z);
 }
 
-void loadProfile(byte i)
+void loadProfile(byte id)
 {
-  i--;
-  profiles[i].load();
-  activeProfile = i;
+  profiles[activeProfile].unload();
+  profiles[id].load();
+  activeProfile = id;
 }
 
 void drawDivisions(void)
 {
   myGLCD.setColor(WHITE);
-  myGLCD.drawLine(63, 239, 63, 0);
-  myGLCD.drawLine(127, 0, 127, 47);
-  myGLCD.drawLine(191, 239, 191, 0);
-  myGLCD.drawLine(255, 239, 255, 0);
-  myGLCD.drawLine(0, 47, 319, 47);
-  myGLCD.drawLine(0, 111, 319, 111);
-  myGLCD.drawLine(0, 175, 319, 175);
+  myGLCD.drawLine(blockWidth - 1 + isOutline, dispY - 1, blockWidth - 1 + isOutline, 0);
+  myGLCD.drawLine(blockWidth * 2 - 1 + isOutline , 0 , blockWidth * 2 - 1 + isOutline , profileEndY);
+  myGLCD.drawLine(blockWidth * 3 - 1 + isOutline , dispY-1 , blockWidth * 3 - 1 + isOutline , 0);
+  myGLCD.drawLine(blockWidth * 4 - 1 + isOutline , dispY-1 , blockWidth * 4 - 1 + isOutline , 0);
+  myGLCD.drawLine(0, topTempControl.y-1 , dispX-1 , topTempControl.y-1);
+  myGLCD.drawLine(0, cookTimeControl.y-1 , dispX-1 , cookTimeControl.y-1);
+  myGLCD.drawLine(0, bottomTempControl.y-1 , dispX-1 , bottomTempControl.y-1);
+}
+
+void calculateProfilesProperties (void)
+{
+  for (int i=0; i<profilesSize; i++)
+  {
+    profiles[i].id = i;
+    profiles[i].x = blockWidth*i + isOutline;
+    profiles[i].y = isOutline;
+  }
+
 }
 
 void drawProfiles(void)
 {
-  int x = 64;
   for (int i=0; i<profilesSize; i++)
   { 
-    if (i == activeProfile)
-    {
-      myGLCD.setColor(GREEN);
-      myGLCD.fillRect(x*i, 0, x*i+62, 46); 
-    }
-    
-    myGLCD.setColor(WHITE);
-    myGLCD.setTextSize(4);
-    myGLCD.print(String(i+1),10+x*i , 8);
-    myGLCD.setTextSize(1);
-    myGLCD.print(String(profiles[i].topTemp), 40+x*i, 6);
-    myGLCD.print(String(profiles[i].cookTime), 40+x*i, 20);
-    myGLCD.print(String(profiles[i].bottomTemp), 40+x*i, 34);
+    profiles[i].draw();
   }
 }
 
@@ -230,7 +289,6 @@ void draw(void)
   bottomTempControl.draw();
 }
 
-int dispX, dispY;
 
 void setup()
 {
@@ -240,9 +298,23 @@ void setup()
   pinMode(A0, OUTPUT);
   myGLCD.InitLCD(TOUCH_ORIENTATION);
   myGLCD.clrScr();
-  //myGLCD.setFont(SmallFont);
-  dispX= myGLCD.getDisplayXSize();
+  myGLCD.setFont(SmallFont);
+
+  dispX = myGLCD.getDisplayXSize();
   dispY = myGLCD.getDisplayYSize();
+  controlButtonWidth = (dispX - 4) / 5; // Substract because of 4 white line division with 1px width
+  controlButtonHeight = controlButtonWidth;
+  blockWidth = controlButtonWidth + 1;
+  blockHeight = blockWidth;
+  if ( (dispX - 4) % 5 >= 2 )  { isOutline = true; } // If there's more than 2 extra pixels, draw outline
+  bottomTempControl.x = isOutline;
+  bottomTempControl.y = dispY - isOutline - controlButtonHeight;
+  cookTimeControl.x = isOutline;
+  cookTimeControl.y = bottomTempControl.y - blockHeight;
+  topTempControl.x = isOutline;
+  topTempControl.y = cookTimeControl.y - blockHeight;
+  profileEndY = topTempControl.y - 2;
+  calculateProfilesProperties();
 
   pinMode(pinTopTempSensor1VCC, OUTPUT); digitalWrite(pinTopTempSensor1VCC, HIGH);
   pinMode(pinTopTempSensor1GND, OUTPUT); digitalWrite(pinTopTempSensor1GND, LOW);
@@ -252,7 +324,7 @@ void setup()
   topTempControl.sensor1 = 45;
   topTempControl.sensor2 = 0;
   
-  loadProfile(5);
+  loadProfile(4);
 
   draw();
 }
@@ -263,4 +335,5 @@ void loop()
   delay(1000);
   topTempControl.updateSensors();  topTempControl.drawSensors();
   bottomTempControl.updateSensors();  bottomTempControl.drawSensors();
+  loadProfile(( (activeProfile >= 4) ? 0 : activeProfile+1 ));
 }
