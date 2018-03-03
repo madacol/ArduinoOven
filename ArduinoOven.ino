@@ -41,8 +41,13 @@ TSPoint tp;                      //Touchscreen_due branch uses Point
 #define SENSOR_TEXT_SIZE 2
 
 int dispX, dispY;
-byte controlButtonWidth, controlButtonHeight, blockWidth, blockHeight, profileEndY;
+byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
 bool isOutline = false;
+
+class Coordinates {
+  public:
+    int startX, startY, endX, endY;
+};
 
 class Control {
 
@@ -50,18 +55,43 @@ class Control {
 
     int x, y;
     int setControl;
+    Coordinates minusButtonBlock;
+    Coordinates setControlBlock;
+    Coordinates plusButtonBlock;
+    Coordinates sensorBlock;
 
-    Control(int _x, int _y):
-      x(_x),
-      y(_y)
-      {};
+    void setCoordinates(int _x, int _y)
+    {
+      x = _x;
+      y = _y;
+
+      minusButtonBlock.startX = x;
+      minusButtonBlock.startY = y;
+      minusButtonBlock.endX = minusButtonBlock.startX+gridInternalWidth;
+      minusButtonBlock.endY = minusButtonBlock.startY+gridInternalHeight;
+
+      setControlBlock.startX = minusButtonBlock.endX+2;
+      setControlBlock.startY =  y;
+      setControlBlock.endX = setControlBlock.startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
+      setControlBlock.endY = setControlBlock.startY+gridInternalHeight;
+
+      plusButtonBlock.startX = setControlBlock.endX+2;
+      plusButtonBlock.startY = y;
+      plusButtonBlock.endX = plusButtonBlock.startX+gridInternalWidth;
+      plusButtonBlock.endY = plusButtonBlock.startY+gridInternalHeight;
+
+      sensorBlock.startX = plusButtonBlock.endX+2;
+      sensorBlock.startY = y;
+      sensorBlock.endX = sensorBlock.startX+gridInternalWidth;
+      sensorBlock.endY = sensorBlock.startY+gridInternalHeight;
+    };
 
     void drawMinusButton(void)
     {
-      int startX = x;
-      int startY = y;
-      int endX = startX+blockWidth-2;
-      int endY = startY+blockHeight-2;
+      int startX = minusButtonBlock.startX;
+      int startY = minusButtonBlock.startY;
+      int endX = minusButtonBlock.endX;
+      int endY = minusButtonBlock.endY;
       myGLCD.setColor(BLUE);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(BLACK);
@@ -70,10 +100,10 @@ class Control {
     
     void drawSetControl(void)
     {
-      int startX = x+blockWidth;
-      int startY = y;
-      int endX = startX+blockWidth*2-2;
-      int endY = startY+blockHeight-2;
+      int startX = setControlBlock.startX;
+      int startY = setControlBlock.startY;
+      int endX = setControlBlock.endX;
+      int endY = setControlBlock.endY;
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
@@ -83,10 +113,10 @@ class Control {
 
     void drawPlusButton(void)
     {
-      int startX = x+blockWidth*3;
-      int startY = y;
-      int endX = startX+blockWidth-2;
-      int endY = startY+blockHeight-2;
+      int startX = plusButtonBlock.startX;
+      int startY = plusButtonBlock.startY;
+      int endX = plusButtonBlock.endX;
+      int endY = plusButtonBlock.endY;
       myGLCD.setColor(RED);
       myGLCD.fillRect(startX, startY, startX+62, endY);
       myGLCD.setColor(BLACK);
@@ -101,7 +131,7 @@ class Control {
       drawSetControl();
     };
 
-} cookTimeControl(0, 112);
+} cookTimeControl;
 
 class TempControl : public Control {
 
@@ -111,17 +141,16 @@ class TempControl : public Control {
     int sensor3;
     MAX6675 *Sensor1;
 
-    TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK):
-      Control(_x, _y),
+    TempControl(int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK):
       Sensor1(new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK))
     {};
 
     void drawSensors(void)
     {
-      int startX = x+blockWidth*4;
-      int startY = y;
-      int endX = startX+controlButtonWidth-1;
-      int endY = startY+controlButtonHeight-1;
+      int startX = sensorBlock.startX;
+      int startY = sensorBlock.startY;
+      int endX = sensorBlock.endX;
+      int endY = sensorBlock.endY;
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
@@ -147,11 +176,11 @@ class TempControl : public Control {
     };
 
 // TempControl(x, y, SensorCLK, SensorCS, SensorDO)
-} topTempControl(0,48, pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
-  bottomTempControl(0,176, pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
+} topTempControl( pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
+  bottomTempControl( pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
 byte activeProfile;
-class Profile {
+class Profile : public Coordinates {
 
   public:
     int bottomTemp;
@@ -159,7 +188,6 @@ class Profile {
     int cookTime;
     bool isActive = false;
     byte id;
-    int x, y;
 
     Profile(int _topTemp, int _cookTime, int _bottomTemp):
       topTemp(_topTemp),
@@ -169,26 +197,24 @@ class Profile {
 
     void draw (void)
     {
-      int endX = x + blockWidth - 2;
-      int endY = profileEndY;
       if (isActive)
       {
         myGLCD.setColor(GREEN);
-        myGLCD.fillRect(x, y, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
         myGLCD.setColor(BLACK);
       }
       else
       {
         myGLCD.setColor(BLACK);
-        myGLCD.fillRect(x, y, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
         myGLCD.setColor(WHITE);
       }
       myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
-      myGLCD.print(String(id+1), x+9 , endY-12);
+      myGLCD.print(String(id+1), startX+9 , endY-12);
       myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
-      myGLCD.print(String(topTemp), x+38, endY-34-10);
-      myGLCD.print(String(cookTime), x+38, endY-20-10);
-      myGLCD.print(String(bottomTemp), x+38, endY-6-10);
+      myGLCD.print(String(topTemp), startX+38, endY-34-10);
+      myGLCD.print(String(cookTime), startX+38, endY-20-10);
+      myGLCD.print(String(bottomTemp), startX+38, endY-6-10);
     };
 
     void load(void)
@@ -255,14 +281,15 @@ void loadProfile(byte id)
 
 void drawDivisions(void)
 {
+  if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
   myGLCD.setColor(WHITE);
-  myGLCD.drawLine(blockWidth - 1 + isOutline, dispY - 1, blockWidth - 1 + isOutline, 0);
-  myGLCD.drawLine(blockWidth * 2 - 1 + isOutline , 0 , blockWidth * 2 - 1 + isOutline , profileEndY);
-  myGLCD.drawLine(blockWidth * 3 - 1 + isOutline , dispY-1 , blockWidth * 3 - 1 + isOutline , 0);
-  myGLCD.drawLine(blockWidth * 4 - 1 + isOutline , dispY-1 , blockWidth * 4 - 1 + isOutline , 0);
-  myGLCD.drawLine(0, topTempControl.y-1 , dispX-1 , topTempControl.y-1);
-  myGLCD.drawLine(0, cookTimeControl.y-1 , dispX-1 , cookTimeControl.y-1);
-  myGLCD.drawLine(0, bottomTempControl.y-1 , dispX-1 , bottomTempControl.y-1);
+  myGLCD.drawLine(gridWidth-1+isOutline , dispY-1 , gridWidth-1+isOutline , 0);
+  myGLCD.drawLine(gridWidth*2-1+isOutline , 0 , gridWidth*2-1+isOutline , dispY-gridHeight*3);
+  myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
+  myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
+  myGLCD.drawLine(0 , topTempControl.y-1 , dispX-1 , topTempControl.y-1);
+  myGLCD.drawLine(0 , cookTimeControl.y-1 , dispX-1 , cookTimeControl.y-1);
+  myGLCD.drawLine(0 , bottomTempControl.y-1 , dispX-1 , bottomTempControl.y-1);
 }
 
 void calculateProfilesProperties (void)
@@ -270,8 +297,10 @@ void calculateProfilesProperties (void)
   for (int i=0; i<profilesSize; i++)
   {
     profiles[i].id = i;
-    profiles[i].x = blockWidth*i + isOutline;
-    profiles[i].y = isOutline;
+    profiles[i].startX = gridWidth*i + isOutline;
+    profiles[i].startY = isOutline;
+    profiles[i].endX = profiles[i].startX + gridInternalWidth;
+    profiles[i].endY = topTempControl.y - 2;
   }
 
 }
@@ -309,18 +338,14 @@ void setup()
   // Set coordinates
   dispX = myGLCD.getDisplayXSize();
   dispY = myGLCD.getDisplayYSize();
-  controlButtonWidth = (dispX - 4) / 5; // Substract because of 4 white line division with 1px width
-  controlButtonHeight = controlButtonWidth;
-  blockWidth = controlButtonWidth + 1;
-  blockHeight = blockWidth;
-  if ( (dispX - 4) % 5 >= 2 )  { isOutline = true; } // If there's more than 2 extra pixels, draw outline
-  bottomTempControl.x = isOutline;
-  bottomTempControl.y = dispY - isOutline - controlButtonHeight;
-  cookTimeControl.x = isOutline;
-  cookTimeControl.y = bottomTempControl.y - blockHeight;
-  topTempControl.x = isOutline;
-  topTempControl.y = cookTimeControl.y - blockHeight;
-  profileEndY = topTempControl.y - 2;
+  gridWidth = dispX / 5;
+  gridHeight = gridWidth;
+  gridInternalWidth = gridWidth - 2;
+  gridInternalHeight = gridHeight - 2;
+  if ( dispX % 5 >= 1 )  { isOutline = true; } // If there's at least 1 extra pixel, draw outline
+  bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
+  cookTimeControl.setCoordinates( isOutline, bottomTempControl.y - gridHeight );
+  topTempControl.setCoordinates( isOutline, cookTimeControl.y - gridHeight );
   calculateProfilesProperties();
 
   // Thermocouple Init
