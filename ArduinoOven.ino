@@ -1,8 +1,10 @@
+// Display
 #define  TOUCH_ORIENTATION  3
 #include <Adafruit_GFX.h>
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 
+// Thermocouple
 #include "max6675.h"
 #define pinTopTempSensor1DO  20
 #define pinTopTempSensor1CS  19
@@ -16,16 +18,16 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define pinBottomTempSensor1GND  23
 
 // MCUFRIEND UNO shield shares pins with the TFT.   Due does NOT work
+// TouchScreen
+#include <TouchScreen.h>
 #define YP A1   //A3 for ILI9320
 #define YM 7    //9
 #define XM A2
 #define XP 6    //8  
-#include <TouchScreen.h>
 TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp;                      //Touchscreen_due branch uses Point
 
-
-//Custom defines
+// Custom defines
 #define GREEN 0, 255, 0
 #define WHITE 255, 255, 255
 #define BLACK 0, 0, 0
@@ -46,8 +48,7 @@ class Control {
 
   public:
 
-    int x;
-    int y;
+    int x, y;
     int setControl;
 
     Control(int _x, int _y):
@@ -55,7 +56,7 @@ class Control {
       y(_y)
       {};
 
-    void drawMinus(void)
+    void drawMinusButton(void)
     {
       int startX = x;
       int startY = y;
@@ -80,7 +81,7 @@ class Control {
       myGLCD.print(String(setControl), startX+11, startY+49);
     };
 
-    void drawPlus(void)
+    void drawPlusButton(void)
     {
       int startX = x+blockWidth*3;
       int startY = y;
@@ -95,8 +96,8 @@ class Control {
 
     virtual void draw(void)
     {
-      drawMinus();
-      drawPlus();
+      drawMinusButton();
+      drawPlusButton();
       drawSetControl();
     };
 
@@ -113,7 +114,7 @@ class TempControl : public Control {
     TempControl(int _x, int _y, int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK):
       Control(_x, _y),
       Sensor1(new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK))
-      {};
+    {};
 
     void drawSensors(void)
     {
@@ -134,8 +135,8 @@ class TempControl : public Control {
 
     void draw(void)
     {
-      drawMinus();
-      drawPlus();
+      drawMinusButton();
+      drawPlusButton();
       drawSetControl();
       drawSensors();
     };
@@ -160,12 +161,12 @@ class Profile {
     byte id;
     int x, y;
 
-    Profile(int _topTemp, int _cookTime, int _bottomTemp)
-    {
-      topTemp = _topTemp;
-      cookTime = _cookTime;
-      bottomTemp = _bottomTemp;
-    };
+    Profile(int _topTemp, int _cookTime, int _bottomTemp):
+      topTemp(_topTemp),
+      cookTime(_cookTime),
+      bottomTemp(_bottomTemp)
+    {};
+
     void draw (void)
     {
       int endX = x + blockWidth - 2;
@@ -182,7 +183,6 @@ class Profile {
         myGLCD.fillRect(x, y, endX, endY);
         myGLCD.setColor(WHITE);
       }
-
       myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
       myGLCD.print(String(id+1), x+9 , endY-12);
       myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
@@ -190,6 +190,7 @@ class Profile {
       myGLCD.print(String(cookTime), x+38, endY-20-10);
       myGLCD.print(String(bottomTemp), x+38, endY-6-10);
     };
+
     void load(void)
     {
       topTempControl.setControl = topTemp;
@@ -198,17 +199,20 @@ class Profile {
       isActive = true;
       draw();
     };
+
     void unload(void)
     {
       isActive = false;
       draw();
     };
+
      void save(void)
     {
       topTemp = topTempControl.setControl;
       cookTime = cookTimeControl.setControl;
       bottomTemp = bottomTempControl.setControl;
     };
+
 } profiles[] = {
   // Profile(topTemp, cookTime, bottomTemp)
   Profile(110,120,130),
@@ -294,12 +298,15 @@ void setup()
 {
   Serial.begin(9600);
   Serial.println("SpRvN");
+
+  // Display init
   digitalWrite(A0, HIGH);
   pinMode(A0, OUTPUT);
   myGLCD.InitLCD(TOUCH_ORIENTATION);
   myGLCD.clrScr();
   myGLCD.setFont(SmallFont);
 
+  // Set coordinates
   dispX = myGLCD.getDisplayXSize();
   dispY = myGLCD.getDisplayYSize();
   controlButtonWidth = (dispX - 4) / 5; // Substract because of 4 white line division with 1px width
@@ -316,6 +323,7 @@ void setup()
   profileEndY = topTempControl.y - 2;
   calculateProfilesProperties();
 
+  // Thermocouple Init
   pinMode(pinTopTempSensor1VCC, OUTPUT); digitalWrite(pinTopTempSensor1VCC, HIGH);
   pinMode(pinTopTempSensor1GND, OUTPUT); digitalWrite(pinTopTempSensor1GND, LOW);
   pinMode(pinBottomTempSensor1VCC, OUTPUT); digitalWrite(pinBottomTempSensor1VCC, HIGH);
