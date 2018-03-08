@@ -49,135 +49,130 @@ class Coordinates {
     int startX, startY, endX, endY;
 };
 
-class Control {
-
+class MinusButton : public Coordinates {
   public:
-
-    int x, y;
-    int setControl;
-    Coordinates minusButtonBlock;
-    Coordinates setControlBlock;
-    Coordinates plusButtonBlock;
-    Coordinates sensorBlock;
-
-    void setCoordinates(int _x, int _y)
-    {
-      x = _x;
-      y = _y;
-
-      minusButtonBlock.startX = x;
-      minusButtonBlock.startY = y;
-      minusButtonBlock.endX = minusButtonBlock.startX+gridInternalWidth;
-      minusButtonBlock.endY = minusButtonBlock.startY+gridInternalHeight;
-
-      setControlBlock.startX = minusButtonBlock.endX+2;
-      setControlBlock.startY =  y;
-      setControlBlock.endX = setControlBlock.startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
-      setControlBlock.endY = setControlBlock.startY+gridInternalHeight;
-
-      plusButtonBlock.startX = setControlBlock.endX+2;
-      plusButtonBlock.startY = y;
-      plusButtonBlock.endX = plusButtonBlock.startX+gridInternalWidth;
-      plusButtonBlock.endY = plusButtonBlock.startY+gridInternalHeight;
-
-      sensorBlock.startX = plusButtonBlock.endX+2;
-      sensorBlock.startY = y;
-      sensorBlock.endX = sensorBlock.startX+gridInternalWidth;
-      sensorBlock.endY = sensorBlock.startY+gridInternalHeight;
+    void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = startX+gridInternalWidth;
+      endY = startY+gridInternalHeight;
     };
-
-    void drawMinusButton(void)
-    {
-      int startX = minusButtonBlock.startX;
-      int startY = minusButtonBlock.startY;
-      int endX = minusButtonBlock.endX;
-      int endY = minusButtonBlock.endY;
+    void draw(void) {
       myGLCD.setColor(BLUE);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
-    
-    void drawSetControl(void)
-    {
-      int startX = setControlBlock.startX;
-      int startY = setControlBlock.startY;
-      int endX = setControlBlock.endX;
-      int endY = setControlBlock.endY;
+};
+
+class SetControl : public Coordinates {
+  public:
+    int value;
+    void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
+      endY = startY+gridInternalHeight;
+    };
+    void draw(void) {
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
       myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-      myGLCD.print(String(setControl), startX+11, startY+49);
+      myGLCD.print(String(value), startX+11, startY+49);
     };
+};
 
-    void drawPlusButton(void)
-    {
-      int startX = plusButtonBlock.startX;
-      int startY = plusButtonBlock.startY;
-      int endX = plusButtonBlock.endX;
-      int endY = plusButtonBlock.endY;
+class PlusButton : public Coordinates {
+  public:
+    void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = startX+gridInternalWidth;
+      endY = startY+gridInternalHeight;
+    };
+    void draw(void) {
       myGLCD.setColor(RED);
       myGLCD.fillRect(startX, startY, startX+62, endY);
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
       myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
+};
 
-    virtual void draw(void)
-    {
-      drawMinusButton();
-      drawPlusButton();
-      drawSetControl();
-    };
-
-} cookTimeControl;
-
-class TempControl : public Control {
-
+class Sensors : public Coordinates {
   public:
-    int sensor1;
-    int sensor2;
-    int sensor3;
-    MAX6675 *Sensor1;
-
-    TempControl(int pinSensor1DO, int pinSensor1CS, int pinSensor1CLK):
-      Sensor1(new MAX6675(pinSensor1DO, pinSensor1CS, pinSensor1CLK))
+    int value1;
+    int value2;
+    MAX6675 Sensor1;
+    Sensors(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
+      Sensor1(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
     {};
-
-    void drawSensors(void)
-    {
-      int startX = sensorBlock.startX;
-      int startY = sensorBlock.startY;
-      int endX = sensorBlock.endX;
-      int endY = sensorBlock.endY;
+    void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = startX+gridInternalWidth;
+      endY = startY+gridInternalHeight;
+    };
+    void draw(void) {
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(WHITE);
       myGLCD.setTextSize(SENSOR_TEXT_SIZE);
-      myGLCD.print(String(sensor1), startX+10, startY+7+10);
-      myGLCD.print(String(sensor2), startX+20+10, startY+35+10);
+      myGLCD.print(String(value1), startX+10, startY+7+10);
+      myGLCD.print(String(value2), startX+20+10, startY+35+10);
       myGLCD.fillRect(startX+8, startY+35+18 , startX+8+13, startY+35+19);
       myGLCD.fillRect(startX+8, startY+35+7 , startX+8+13, startY+35+8);
       myGLCD.fillRect(startX+8+6, startY+35 , startX+8+7, startY+35+15);
     };
-
-    void draw(void)
-    {
-      drawMinusButton();
-      drawPlusButton();
-      drawSetControl();
-      drawSensors();
+    void update(void) {
+      value1 = Sensor1.readCelsius();
     };
+};
 
-    void updateSensors(void)
-    {
-      sensor1 = Sensor1->readCelsius();
+class Control {
+  public:
+    int x, y;
+    MinusButton minusButton;
+    SetControl setControl;
+    PlusButton plusButton;
+    virtual void setCoordinates(int _x, int _y) {
+      x = _x;
+      y = _y;
+      minusButton.setCoordinates(x, y);
+      setControl.setCoordinates(gridWidth, y);
+      plusButton.setCoordinates(gridWidth*3, y);
     };
+    virtual void draw(void) {
+      minusButton.draw();
+      plusButton.draw();
+      setControl.draw();
+    };
+} cookTimeControl;
 
-// TempControl(x, y, SensorCLK, SensorCS, SensorDO)
-} topTempControl( pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
-  bottomTempControl( pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
+class TempControl : public Control {
+  public:
+    Sensors sensors;
+    TempControl(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
+      sensors(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
+    {};
+    void setCoordinates(int _x, int _y) {
+      x = _x;
+      y = _y;
+      minusButton.setCoordinates(x, y);
+      setControl.setCoordinates(minusButton.endX+2, y);
+      plusButton.setCoordinates(setControl.endX+2, y);
+      sensors.setCoordinates(plusButton.endX+2, y);
+    };
+    void draw(void) {
+      minusButton.draw();
+      setControl.draw();
+      plusButton.draw();
+      sensors.draw();
+    };
+// TempControl(SensorCLK, SensorCS, SensorDO)
+} topTempControl(pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
+  bottomTempControl(pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
 byte activeProfile;
 class Profile : public Coordinates {
@@ -219,9 +214,9 @@ class Profile : public Coordinates {
 
     void load(void)
     {
-      topTempControl.setControl = topTemp;
-      cookTimeControl.setControl = cookTime;
-      bottomTempControl.setControl = bottomTemp;
+      topTempControl.setControl.value = topTemp;
+      cookTimeControl.setControl.value = cookTime;
+      bottomTempControl.setControl.value = bottomTemp;
       isActive = true;
       draw();
     };
@@ -232,11 +227,11 @@ class Profile : public Coordinates {
       draw();
     };
 
-     void save(void)
+    void save(void)
     {
-      topTemp = topTempControl.setControl;
-      cookTime = cookTimeControl.setControl;
-      bottomTemp = bottomTempControl.setControl;
+      topTemp = topTempControl.setControl.value;
+      cookTime = cookTimeControl.setControl.value;
+      bottomTemp = bottomTempControl.setControl.value;
     };
 
 } profiles[] = {
@@ -353,10 +348,10 @@ void setup()
   pinMode(pinTopTempSensor1GND, OUTPUT); digitalWrite(pinTopTempSensor1GND, LOW);
   pinMode(pinBottomTempSensor1VCC, OUTPUT); digitalWrite(pinBottomTempSensor1VCC, HIGH);
   pinMode(pinBottomTempSensor1GND, OUTPUT); digitalWrite(pinBottomTempSensor1GND, LOW);
-  
-  topTempControl.sensor1 = 45;
-  topTempControl.sensor2 = 0;
-  
+
+  topTempControl.sensors.value1 = 100;
+  topTempControl.sensors.value2 = 0;
+
   loadProfile(4);
 
   draw();
@@ -366,7 +361,7 @@ void setup()
 void loop()
 {
   delay(1000);
-  topTempControl.updateSensors();  topTempControl.drawSensors();
-  bottomTempControl.updateSensors();  bottomTempControl.drawSensors();
+  topTempControl.sensors.update();  topTempControl.sensors.draw();
+  bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
   loadProfile(( (activeProfile >= 4) ? 0 : activeProfile+1 ));
 }
