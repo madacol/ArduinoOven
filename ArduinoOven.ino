@@ -23,26 +23,40 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define YP A1   //A3 for ILI9320
 #define YM 7    //9
 #define XM A2
-#define XP 6    //8  
+#define XP 6    //8
 TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp;                      //Touchscreen_due branch uses Point
 
-// Custom defines
-#define GREEN 0, 255, 0
+// Colors
 #define WHITE 255, 255, 255
 #define BLACK 0, 0, 0
 #define RED 255, 0, 0
+#define GREEN 0, 255, 0
 #define BLUE 0, 0, 255
 #define YELLOW 255, 255, 0
 
+// Text sizes
 #define SET_CONTROL_TEXT_SIZE 5
 #define PROFILE_ID_TEXT_SIZE 4
 #define PROFILE_PARAM_TEXT_SIZE 1
 #define SENSOR_TEXT_SIZE 2
 
+
+// ###############################################################
+// #####################   GLOBAL VARIABLES   ####################
+// ###############################################################
+
+
 int dispX, dispY;
 byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
+byte activeProfile;
 bool isOutline = false;
+
+
+// ###############################################################
+// #########################   CLASSES   #########################
+// ###############################################################
+
 
 class Coordinates {
   public:
@@ -174,7 +188,6 @@ class TempControl : public Control {
 } topTempControl(pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
   bottomTempControl(pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
-byte activeProfile;
 class Profile : public Coordinates {
 
   public:
@@ -245,6 +258,11 @@ class Profile : public Coordinates {
 byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
 
+// ###############################################################
+// #####################   GLOBAL FUNCTIONS   ####################
+// ###############################################################
+
+
 void readResistiveTouch(void)
 {
   tp = myTouch.getPoint();
@@ -297,13 +315,12 @@ void calculateProfilesProperties (void)
     profiles[i].endX = profiles[i].startX + gridInternalWidth;
     profiles[i].endY = topTempControl.y - 2;
   }
-
 }
 
 void drawProfiles(void)
 {
   for (int i=0; i<profilesSize; i++)
-  { 
+  {
     profiles[i].draw();
   }
 }
@@ -316,6 +333,11 @@ void draw(void)
   cookTimeControl.draw();
   bottomTempControl.draw();
 }
+
+
+// ###############################################################
+// #########################    SETUP    #########################
+// ###############################################################
 
 
 void setup()
@@ -356,6 +378,11 @@ void setup()
 
   draw();
 }
+
+
+// ###############################################################
+// ##########################    LOOP    #########################
+// ###############################################################
 
 
 void loop()
