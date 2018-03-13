@@ -296,7 +296,7 @@ TSPoint getTouch(void)
   //Serial.print("  count=");Serial.print(count);
   //Serial.print(" z=");Serial.println(tpt.z);
   if (count < quorum) tpt.z=0;
-  else if (count>0) { tpt.x /= count; tpt.y /= count; tpt.z /= count; } // get average
+  else { tpt.x /= count; tpt.y /= count; tpt.z /= count; } // get average
   int temp = map(tpt.y, 85, 896, dispX-1, 0);
   tpt.y = map(tpt.x, 907, 130, dispY-1, 0);
   tpt.x = temp;
@@ -332,7 +332,7 @@ void drawDivisions(void)
 
 void calculateProfilesProperties (void)
 {
-  for (int i=0; i<profilesSize; i++)
+  for (byte i=0; i<profilesSize; i++)
   {
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
@@ -344,7 +344,7 @@ void calculateProfilesProperties (void)
 
 void drawProfiles(void)
 {
-  for (int i=0; i<profilesSize; i++)
+  for (byte i=0; i<profilesSize; i++)
   {
     profiles[i].draw();
   }
@@ -367,7 +367,7 @@ void draw(void)
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("SpRvN");
 
   // Display init
