@@ -20,10 +20,10 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 // MCUFRIEND UNO shield shares pins with the TFT.   Due does NOT work
 // TouchScreen
 #include <TouchScreen.h>
-#define YP A1   //A3 for ILI9320
-#define YM 7    //9
-#define XM A2
-#define XP 6    //8
+#define YP A2   //A3 for ILI9320
+#define YM 6    //9
+#define XM A1
+#define XP 7    //8
 TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp;                      //Touchscreen_due branch uses Point
 
@@ -263,19 +263,44 @@ byte profilesSize = sizeof(profiles) / sizeof(Profile);
 // ###############################################################
 
 
-void readResistiveTouch(void)
+TSPoint readResistiveTouch(void)
 {
-  tp = myTouch.getPoint();
+  TSPoint tpt = myTouch.getPoint();
   pinMode(YP, OUTPUT);      //restore shared pins
   pinMode(XM, OUTPUT);
-  digitalWrite(YP, HIGH);
-  digitalWrite(XM, HIGH);
+  return tpt;
 }
 
-bool ISPRESSED(void)
+bool isPressed (TSPoint tpt)
 {
-  readResistiveTouch();
-  return tp.z > 20 && tp.z < 1000;
+  return tpt.z > 0;
+}
+
+TSPoint getTouch(void)
+{
+  TSPoint tpt;
+  byte count = 0;
+  #define sampleNum 10
+  #define quorum 3
+  for (byte i=0; i < sampleNum; i++)
+  {
+    TSPoint tptmp = readResistiveTouch();
+    if (tptmp.z > 50 )
+    {
+      tpt.x += tptmp.x;
+      tpt.y += tptmp.y;
+      tpt.z += tptmp.z;
+      count++;
+    }
+  }
+  //Serial.print("  count=");Serial.print(count);
+  //Serial.print(" z=");Serial.println(tpt.z);
+  if (count < quorum) tpt.z=0;
+  else if (count>0) { tpt.x /= count; tpt.y /= count; tpt.z /= count; } // get average
+  int temp = map(tpt.y, 85, 896, dispX-1, 0);
+  tpt.y = map(tpt.x, 907, 130, dispY-1, 0);
+  tpt.x = temp;
+  return tpt;
 }
 
 void showpoint(void)
@@ -387,8 +412,15 @@ void setup()
 
 void loop()
 {
-  delay(1000);
-  topTempControl.sensors.update();  topTempControl.sensors.draw();
-  bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
-  loadProfile(( (activeProfile >= 4) ? 0 : activeProfile+1 ));
+  //delay(100);
+  //topTempControl.sensors.update();  topTempControl.sensors.draw();
+  //bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
+  //loadProfile(( (activeProfile >= 4) ? 0 : activeProfile+1 ));
+  //readResistiveTouch();
+  tp = getTouch();
+  if (isPressed(tp)) showpoint();
+  //if (isPressed(tp))
+    //topTempControl.setControl.value=tp.x; topTempControl.setControl.draw();
+    //cookTimeControl.setControl.value=tp.y; cookTimeControl.setControl.draw();
+    //bottomTempControl.setControl.value=tp.z; bottomTempControl.setControl.draw();
 }
