@@ -25,7 +25,17 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define XM A1
 #define XP 7    //8
 TouchScreen myTouch(XP, YP, XM, YM, 300);
-TSPoint tp;                      //Touchscreen_due branch uses Point
+TSPoint tp, last_tp;
+#define CLICK_TIME 30
+#define HOLD_TIME CLICK_TIME
+#define LONG_CLICK_TIME 600
+#define LONG_HOLD_TIME  LONG_CLICK_TIME
+#define DEAD_ZONE 5
+//Touch events
+#define CLICK_EVENT       0
+#define LONG_CLICK_EVENT  1
+#define HOLD_EVENT        2
+#define LONG_HOLD_EVENT   3
 
 // Colors
 #define   YELLOW  0xFFE0
@@ -57,6 +67,10 @@ int dispX, dispY;
 byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
 byte activeProfile;
 bool isOutline = false;
+
+bool TouchStatus;       // the current value read from isPressed()
+bool lastTouchStatus = false;
+long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
 
 
 // ###############################################################
@@ -160,6 +174,14 @@ class Control : public Coordinates {
       plusButton.draw();
       setControl.draw();
     };
+    void decreaseSetControl(void) {
+      setControl.value--;
+      setControl.draw();
+    }
+    void increaseSetControl(void) {
+      setControl.value++;
+      setControl.draw();
+    }
 } cookTimeControl;
 
 class TempControl : public Control {
@@ -268,17 +290,38 @@ byte profilesSize = sizeof(profiles) / sizeof(Profile);
 // ###############################################################
 
 
+void loadProfile(byte id)
+{
+  profiles[activeProfile].unload();
+  profiles[id].load();
+  activeProfile = id;
+}
+
+void saveProfile(byte id)
+{
+  profiles[activeProfile].unload();
+  profiles[id].save();
+  activeProfile = id;
+}
+
+void calculateProfilesProperties (void)
+{
+  for (byte i=0; i<profilesSize; i++)
+  {
+    profiles[i].id = i;
+    profiles[i].startX = gridWidth*i + isOutline;
+    profiles[i].startY = isOutline;
+    profiles[i].endX = profiles[i].startX + gridInternalWidth;
+    profiles[i].endY = topTempControl.startY - 2;
+  }
+}
+
 TSPoint readResistiveTouch(void)
 {
   TSPoint tpt = myTouch.getPoint();
   pinMode(YP, OUTPUT);      //restore shared pins
   pinMode(XM, OUTPUT);
   return tpt;
-}
-
-bool isPressed (TSPoint tpt)
-{
-  return tpt.z > 0;
 }
 
 TSPoint getTouch(void)
@@ -308,43 +351,20 @@ TSPoint getTouch(void)
   return tpt;
 }
 
-void showpoint(void)
+bool isPressed (TSPoint tpt)
 {
-  Serial.print("\r\nx="); Serial.print(tp.x);
-  Serial.print(" y="); Serial.print(tp.y);
-  Serial.print(" z="); Serial.print(tp.z);
+  return tpt.z > 0;
 }
 
-void loadProfile(byte id)
-{
-  profiles[activeProfile].unload();
-  profiles[id].load();
-  activeProfile = id;
+bool hasTouchStatusChanged () {
+  return TouchStatus != lastTouchStatus;
 }
 
-void drawDivisions(void)
+void showpoint(TSPoint tpt)
 {
-  if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
-  myGLCD.setColor(WHITE);
-  myGLCD.drawLine(gridWidth-1+isOutline , dispY-1 , gridWidth-1+isOutline , 0);
-  myGLCD.drawLine(gridWidth*2-1+isOutline , 0 , gridWidth*2-1+isOutline , dispY-gridHeight*3);
-  myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
-  myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
-  myGLCD.drawLine(0 , topTempControl.y-1 , dispX-1 , topTempControl.y-1);
-  myGLCD.drawLine(0 , cookTimeControl.y-1 , dispX-1 , cookTimeControl.y-1);
-  myGLCD.drawLine(0 , bottomTempControl.y-1 , dispX-1 , bottomTempControl.y-1);
-}
-
-void calculateProfilesProperties (void)
-{
-  for (byte i=0; i<profilesSize; i++)
-  {
-    profiles[i].id = i;
-    profiles[i].startX = gridWidth*i + isOutline;
-    profiles[i].startY = isOutline;
-    profiles[i].endX = profiles[i].startX + gridInternalWidth;
-    profiles[i].endY = topTempControl.y - 2;
-  }
+  Serial.print("\r\nx="); Serial.print(tpt.x);
+  Serial.print(" y="); Serial.print(tpt.y);
+  Serial.print(" z="); Serial.print(tpt.z);
 }
 
 void drawProfiles(void)
@@ -355,6 +375,19 @@ void drawProfiles(void)
   }
 }
 
+void drawDivisions(void)
+{
+  if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
+  myGLCD.setColor(WHITE);
+  myGLCD.drawLine(gridWidth-1+isOutline , dispY-1 , gridWidth-1+isOutline , 0);
+  myGLCD.drawLine(gridWidth*2-1+isOutline , 0 , gridWidth*2-1+isOutline , dispY-gridHeight*3);
+  myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
+  myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
+  myGLCD.drawLine(0 , topTempControl.startY-1 , dispX-1 , topTempControl.startY-1);
+  myGLCD.drawLine(0 , cookTimeControl.startY-1 , dispX-1 , cookTimeControl.startY-1);
+  myGLCD.drawLine(0 , bottomTempControl.startY-1 , dispX-1 , bottomTempControl.startY-1);
+}
+
 void draw(void)
 {
   drawDivisions();
@@ -362,6 +395,190 @@ void draw(void)
   topTempControl.draw();
   cookTimeControl.draw();
   bottomTempControl.draw();
+}
+
+
+/*
+rant (
+  "fucking ugliest code I could come up with, everything was going so fine,
+    I was so proud of my code so far, until this shit happened, it wrecked me, I HATE THIS!
+  I just couldn't make TouchAction's function to execute it's parent's function, when parents can be
+    of differents classes. I wanted to declare TouchAction as an object inside an instance of Profile
+    and 3 instances of TempControl and make TouchAction::click() to execute it's parent's click()
+    method Profile::click() or TempControl::click(), I just couldn't, maybe something's wrong with my
+    undestanding of OOP. I don't know, maybe all i thought I knew about OOP is just worthless.
+  Anyway, this is the *best* (¬¬ worst ¬¬) that I could come up with"
+);
+*/
+void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
+{
+  showpoint(tpt);
+  // Profiles
+  if (tpt.y > profiles[0].startY+DEAD_ZONE  &&  tpt.y < profiles[0].endY-DEAD_ZONE)
+  {
+    if (tpt.x > profiles[0].startX+DEAD_ZONE  &&  tpt.x < profiles[0].endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      loadProfile(0); break;
+        case LONG_CLICK_EVENT : saveProfile(0); break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > profiles[1].startX+DEAD_ZONE  &&  tpt.x < profiles[1].endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      loadProfile(1); break;
+        case LONG_CLICK_EVENT : saveProfile(1); break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > profiles[2].startX+DEAD_ZONE  &&  tpt.x < profiles[2].endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      loadProfile(2); break;
+        case LONG_CLICK_EVENT : saveProfile(2); break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > profiles[3].startX+DEAD_ZONE  &&  tpt.x < profiles[3].endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      loadProfile(3); break;
+        case LONG_CLICK_EVENT : saveProfile(3); break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > profiles[4].startX+DEAD_ZONE  &&  tpt.x < profiles[4].endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      loadProfile(4); break;
+        case LONG_CLICK_EVENT : saveProfile(4); break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+  }
+  else if (tpt.y > topTempControl.startY+DEAD_ZONE  &&  tpt.y < topTempControl.endY-DEAD_ZONE)
+  {
+    if (tpt.x > topTempControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < topTempControl.minusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      topTempControl.decreaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  topTempControl.decreaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > topTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < topTempControl.setControl.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > topTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < topTempControl.plusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      topTempControl.increaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  topTempControl.increaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > topTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < topTempControl.sensors.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+  }
+  else if (tpt.y > cookTimeControl.startY+DEAD_ZONE  &&  tpt.y < cookTimeControl.endY-DEAD_ZONE)
+  {
+    if (tpt.x > cookTimeControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.minusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      cookTimeControl.decreaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  cookTimeControl.decreaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > cookTimeControl.setControl.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.setControl.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > cookTimeControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.plusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      cookTimeControl.increaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  cookTimeControl.increaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > cookTimeControl.sensors.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.sensors.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+  }
+  else if (tpt.y > bottomTempControl.startY+DEAD_ZONE  &&  tpt.y < bottomTempControl.endY-DEAD_ZONE)
+  {
+    if (tpt.x > bottomTempControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.minusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      bottomTempControl.decreaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  bottomTempControl.decreaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > bottomTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.setControl.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+    else if (tpt.x > bottomTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.plusButton.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      bottomTempControl.increaseSetControl(); break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  bottomTempControl.increaseSetControl(); break;
+      }
+    }
+    else if (tpt.x > bottomTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.sensors.endX-DEAD_ZONE)
+    {
+      switch (event) {
+        case CLICK_EVENT :      break;
+        case LONG_CLICK_EVENT : break;
+        case HOLD_EVENT :       break;
+        case LONG_HOLD_EVENT :  break;
+      }
+    }
+  }
 }
 
 
@@ -420,5 +637,42 @@ void loop()
   topTempControl.sensors.update();  topTempControl.sensors.draw();
   bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
 
+  //Checking Touch
   tp = getTouch();
+  TouchStatus=isPressed(tp);
+  lastTimeSinceTouchStarted = timeSinceTouchStarted;
+  timeSinceTouchStarted=millis()-timeTouchStarted;
+  if (hasTouchStatusChanged())
+  {
+    if (TouchStatus)
+    {
+      timeTouchStarted = millis();
+    }
+    else if (timeSinceTouchStarted > LONG_CLICK_TIME)
+    {
+      findObjectFromCoordAndExecuteAction(last_tp, LONG_CLICK_EVENT);
+    }
+    else if (timeSinceTouchStarted > CLICK_TIME)
+    {
+      findObjectFromCoordAndExecuteAction(last_tp, CLICK_EVENT);
+    }
+    lastTouchStatus=TouchStatus;
+  }
+  else
+  {
+    if (TouchStatus)
+    {
+      if (lastTimeSinceTouchStarted < LONG_CLICK_TIME && timeSinceTouchStarted > LONG_CLICK_TIME)
+        draw();
+      if (timeSinceTouchStarted > LONG_HOLD_TIME)
+      {
+        findObjectFromCoordAndExecuteAction(tp, LONG_HOLD_EVENT);
+      }
+      else if (timeSinceTouchStarted > HOLD_TIME)
+      {
+        findObjectFromCoordAndExecuteAction(tp, HOLD_EVENT);
+      }
+    }
+  }
+  last_tp = tp;
 }
