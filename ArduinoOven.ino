@@ -28,19 +28,25 @@ TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp;                      //Touchscreen_due branch uses Point
 
 // Colors
-#define WHITE 255, 255, 255
-#define BLACK 0, 0, 0
-#define RED 255, 0, 0
-#define GREEN 0, 255, 0
-#define BLUE 0, 0, 255
-#define YELLOW 255, 255, 0
+#define   YELLOW  0xFFE0
+#define   WHITE   0xFFFF
+#define   BLACK   0x0000
+#define   BLUE    0x001F
+#define   RED     0xF800
+#define   GREEN   0x07E0
+#define   GREY    0x7BEF
+#define   CYAN    0x07FF
+#define   MAGENTA 0xF81F
 
 // Text sizes
-#define SET_CONTROL_TEXT_SIZE 5
+#define SET_CONTROL_TEXT_SIZE 6
 #define PROFILE_ID_TEXT_SIZE 4
 #define PROFILE_PARAM_TEXT_SIZE 1
-#define SENSOR_TEXT_SIZE 2
+#define SENSOR_TEXT_SIZE 3
 
+void debug (String text) {
+  Serial.println(text);
+};
 
 // ###############################################################
 // #####################   GLOBAL VARIABLES   ####################
@@ -61,16 +67,16 @@ bool isOutline = false;
 class Coordinates {
   public:
     int startX, startY, endX, endY;
-};
-
-class MinusButton : public Coordinates {
-  public:
-    void setCoordinates(int x, int y) {
+    virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
       endX = startX+gridInternalWidth;
       endY = startY+gridInternalHeight;
     };
+};
+
+class MinusButton : public Coordinates {
+  public:
     void draw(void) {
       myGLCD.setColor(BLUE);
       myGLCD.fillRect(startX, startY, endX, endY);
@@ -91,20 +97,14 @@ class SetControl : public Coordinates {
     void draw(void) {
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
-      myGLCD.setColor(WHITE);
+      myGLCD.setTextColor(WHITE, BLACK);
       myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-      myGLCD.print(String(value), startX+11, startY+49);
+      myGLCD.print(String(value), startX+12, startY+11);
     };
 };
 
 class PlusButton : public Coordinates {
   public:
-    void setCoordinates(int x, int y) {
-      startX = x;
-      startY = y;
-      endX = startX+gridInternalWidth;
-      endY = startY+gridInternalHeight;
-    };
     void draw(void) {
       myGLCD.setColor(RED);
       myGLCD.fillRect(startX, startY, startX+62, endY);
@@ -122,40 +122,38 @@ class Sensors : public Coordinates {
     Sensors(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
       Sensor1(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
     {};
-    void setCoordinates(int x, int y) {
-      startX = x;
-      startY = y;
-      endX = startX+gridInternalWidth;
-      endY = startY+gridInternalHeight;
-    };
     void draw(void) {
       myGLCD.setColor(BLACK);
       myGLCD.fillRect(startX, startY, endX, endY);
-      myGLCD.setColor(WHITE);
+      myGLCD.setTextColor(WHITE);
       myGLCD.setTextSize(SENSOR_TEXT_SIZE);
-      myGLCD.print(String(value1), startX+10, startY+7+10);
-      myGLCD.print(String(value2), startX+20+10, startY+35+10);
-      myGLCD.fillRect(startX+8, startY+35+18 , startX+8+13, startY+35+19);
-      myGLCD.fillRect(startX+8, startY+35+7 , startX+8+13, startY+35+8);
-      myGLCD.fillRect(startX+8+6, startY+35 , startX+8+7, startY+35+15);
+      myGLCD.print(String(value1), startX+7, startY+7);
+      myGLCD.print(String(value2), startX+18+7, startY+35);
+      myGLCD.setColor(WHITE);
+      myGLCD.fillRect(startX+7, startY+35+18 , startX+7+13, startY+35+19);
+      myGLCD.fillRect(startX+7, startY+35+7 , startX+7+13, startY+35+8);
+      myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
     };
     void update(void) {
       value1 = Sensor1.readCelsius();
     };
 };
 
-class Control {
+class Control : public Coordinates {
   public:
-    int x, y;
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    virtual void setCoordinates(int _x, int _y) {
-      x = _x;
-      y = _y;
-      minusButton.setCoordinates(x, y);
-      setControl.setCoordinates(gridWidth, y);
-      plusButton.setCoordinates(gridWidth*3, y);
+    Coordinates sensors;
+    virtual void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = dispX-1 - isOutline;
+      endY = startY + gridInternalHeight;
+      minusButton.setCoordinates(startX, startY);
+      setControl.setCoordinates(startX+gridWidth, startY);
+      plusButton.setCoordinates(startX+gridWidth*3, startY);
+      sensors.setCoordinates(startX+gridWidth*4, startY);
     };
     virtual void draw(void) {
       minusButton.draw();
@@ -170,13 +168,15 @@ class TempControl : public Control {
     TempControl(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
       sensors(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
     {};
-    void setCoordinates(int _x, int _y) {
-      x = _x;
-      y = _y;
-      minusButton.setCoordinates(x, y);
-      setControl.setCoordinates(minusButton.endX+2, y);
-      plusButton.setCoordinates(setControl.endX+2, y);
-      sensors.setCoordinates(plusButton.endX+2, y);
+    void setCoordinates(int x, int y) {
+      startX = x;
+      startY = y;
+      endX = dispX-1 - isOutline;
+      endY = startY + gridInternalHeight;
+      minusButton.setCoordinates(startX, startY);
+      setControl.setCoordinates(startX+gridWidth, startY);
+      plusButton.setCoordinates(startX+gridWidth*3, startY);
+      sensors.setCoordinates(startX+gridWidth*4, startY);
     };
     void draw(void) {
       minusButton.draw();
@@ -209,20 +209,20 @@ class Profile : public Coordinates {
       {
         myGLCD.setColor(GREEN);
         myGLCD.fillRect(startX, startY, endX, endY);
-        myGLCD.setColor(BLACK);
+        myGLCD.setTextColor(BLACK);
       }
       else
       {
         myGLCD.setColor(BLACK);
         myGLCD.fillRect(startX, startY, endX, endY);
-        myGLCD.setColor(WHITE);
+        myGLCD.setTextColor(WHITE);
       }
       myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
-      myGLCD.print(String(id+1), startX+9 , endY-12);
+      myGLCD.print(String(id+1), startX+9 , startY+9);
       myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
-      myGLCD.print(String(topTemp), startX+38, endY-34-10);
-      myGLCD.print(String(cookTime), startX+38, endY-20-10);
-      myGLCD.print(String(bottomTemp), startX+38, endY-6-10);
+      myGLCD.print(String(topTemp), startX+38, startY+6);
+      myGLCD.print(String(cookTime), startX+38, startY+6+14);
+      myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
     };
 
     void load(void)
@@ -232,6 +232,9 @@ class Profile : public Coordinates {
       bottomTempControl.setControl.value = bottomTemp;
       isActive = true;
       draw();
+      topTempControl.setControl.draw();
+      cookTimeControl.setControl.draw();
+      bottomTempControl.setControl.draw();
     };
 
     void unload(void)
@@ -245,6 +248,8 @@ class Profile : public Coordinates {
       topTemp = topTempControl.setControl.value;
       cookTime = cookTimeControl.setControl.value;
       bottomTemp = bottomTempControl.setControl.value;
+      isActive = true;
+      draw();
     };
 
 } profiles[] = {
@@ -367,7 +372,7 @@ void draw(void)
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.println("SpRvN");
 
   // Display init
@@ -375,7 +380,7 @@ void setup()
   pinMode(A0, OUTPUT);
   myGLCD.InitLCD(TOUCH_ORIENTATION);
   myGLCD.clrScr();
-  myGLCD.setFont(SmallFont);
+  myGLCD.setFont();
 
   // Set coordinates
   dispX = myGLCD.getDisplayXSize();
@@ -386,8 +391,8 @@ void setup()
   gridInternalHeight = gridHeight - 2;
   if ( dispX % 5 >= 1 )  { isOutline = true; } // If there's at least 1 extra pixel, draw outline
   bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
-  cookTimeControl.setCoordinates( isOutline, bottomTempControl.y - gridHeight );
-  topTempControl.setCoordinates( isOutline, cookTimeControl.y - gridHeight );
+  cookTimeControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
+  topTempControl.setCoordinates( isOutline, cookTimeControl.startY - gridHeight );
   calculateProfilesProperties();
 
   // Thermocouple Init
@@ -412,15 +417,8 @@ void setup()
 
 void loop()
 {
-  //delay(100);
-  //topTempControl.sensors.update();  topTempControl.sensors.draw();
-  //bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
-  //loadProfile(( (activeProfile >= 4) ? 0 : activeProfile+1 ));
-  //readResistiveTouch();
+  topTempControl.sensors.update();  topTempControl.sensors.draw();
+  bottomTempControl.sensors.update();  bottomTempControl.sensors.draw();
+
   tp = getTouch();
-  if (isPressed(tp)) showpoint();
-  //if (isPressed(tp))
-    //topTempControl.setControl.value=tp.x; topTempControl.setControl.draw();
-    //cookTimeControl.setControl.value=tp.y; cookTimeControl.setControl.draw();
-    //bottomTempControl.setControl.value=tp.z; bottomTempControl.setControl.draw();
 }
