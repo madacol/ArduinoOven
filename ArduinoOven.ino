@@ -4,7 +4,7 @@
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 
-// Thermocouple
+// Thermocouples
 #include "max6675.h"
 #define pinTopTempSensor1DO  20
 #define pinTopTempSensor1CS  19
@@ -17,7 +17,6 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define pinBottomTempSensor1VCC  25
 #define pinBottomTempSensor1GND  23
 
-// MCUFRIEND UNO shield shares pins with the TFT.   Due does NOT work
 // TouchScreen
 #include <TouchScreen.h>
 #define YP A2   //A3 for ILI9320
@@ -26,33 +25,33 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define XP 7    //8
 TouchScreen myTouch(XP, YP, XM, YM, 300);
 TSPoint tp, last_tp;
-#define CLICK_TIME 30
-#define HOLD_TIME CLICK_TIME
-#define LONG_CLICK_TIME 600
-#define LONG_HOLD_TIME  LONG_CLICK_TIME
-#define DEAD_ZONE 5
-//Touch events
+#define CLICK_TIME      30              // minimum ms after initial touch to trigger CLICK_EVENT
+#define HOLD_TIME       CLICK_TIME      // minimum ms after initial touch to trigger HOLD_EVENT
+#define LONG_CLICK_TIME 600             // minimum ms after initial touch to trigger LONG_CLICK_EVENT
+#define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms after initial touch to trigger LONG_HOLD_EVENT
+#define DEAD_ZONE 5 // outest pixels of objects where Touch-Events are disabled
+// Touch events
 #define CLICK_EVENT       0
 #define LONG_CLICK_EVENT  1
 #define HOLD_EVENT        2
 #define LONG_HOLD_EVENT   3
 
 // Colors
-#define   YELLOW  0xFFE0
-#define   WHITE   0xFFFF
-#define   BLACK   0x0000
-#define   BLUE    0x001F
-#define   RED     0xF800
-#define   GREEN   0x07E0
-#define   GREY    0x7BEF
-#define   CYAN    0x07FF
-#define   MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+#define BLACK   0x0000
+#define BLUE    0x001F
+#define RED     0xF800
+#define GREEN   0x07E0
+#define GREY    0x7BEF
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
 
 // Text sizes
-#define SET_CONTROL_TEXT_SIZE 6
-#define PROFILE_ID_TEXT_SIZE 4
+#define SET_CONTROL_TEXT_SIZE   6
+#define PROFILE_ID_TEXT_SIZE    4
 #define PROFILE_PARAM_TEXT_SIZE 1
-#define SENSOR_TEXT_SIZE 3
+#define SENSOR_TEXT_SIZE        3
 
 void debug (String text) {
   Serial.println(text);
