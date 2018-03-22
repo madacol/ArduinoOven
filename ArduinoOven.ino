@@ -36,6 +36,12 @@ TSPoint tp, last_tp;
 #define HOLD_EVENT        2
 #define LONG_HOLD_EVENT   3
 
+// States
+#define CONTROLLING_SETPOINTS   0
+#define CONTROLLING_TOP_PID     1
+#define CONTROLLING_BOTTOM_PID  2
+#define SHOWING_GRAPH           3
+
 // Colors
 #define YELLOW  0xFFE0
 #define WHITE   0xFFFF
@@ -65,6 +71,7 @@ void debug (String text) {
 int dispX, dispY;
 byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
 byte activeProfile;
+byte state;
 bool isOutline = false;
 
 bool TouchStatus;       // the current value read from isPressed()
@@ -300,20 +307,6 @@ byte profilesSize = sizeof(profiles) / sizeof(Profile);
 // ###############################################################
 
 
-void loadProfile(byte id)
-{
-  profiles[activeProfile].unload();
-  profiles[id].load();
-  activeProfile = id;
-}
-
-void saveProfile(byte id)
-{
-  profiles[activeProfile].unload();
-  profiles[id].save();
-  activeProfile = id;
-}
-
 void calculateProfilesProperties (void)
 {
   for (byte i=0; i<profilesSize; i++)
@@ -400,13 +393,70 @@ void drawDivisions(void)
 
 void draw(void)
 {
-  drawDivisions();
-  drawProfiles();
-  topTempControl.draw();
-  cookTimeControl.draw();
-  bottomTempControl.draw();
+  switch (state) {
+    case CONTROLLING_SETPOINTS:
+      drawDivisions();
+      drawProfiles();
+      topTempControl.draw();
+      cookTimeControl.draw();
+      bottomTempControl.draw();
+    break;
+    case CONTROLLING_TOP_PID:
+    break;
+    case CONTROLLING_BOTTOM_PID:
+    break;
+  }
 }
 
+void ControlSetpoint (void) {
+  state = CONTROLLING_SETPOINTS;
+  bottomTempControl.sensors.lowlight();
+  topTempControl.sensors.lowlight();
+  draw();
+}
+void ControlBottomPID (void) {
+  state = CONTROLLING_BOTTOM_PID;
+  bottomTempControl.sensors.highlight();
+  topTempControl.sensors.lowlight();
+  draw();
+}
+void ControlTopPID (void) {
+  state = CONTROLLING_TOP_PID;
+  topTempControl.sensors.highlight();
+  bottomTempControl.sensors.lowlight();
+  draw();
+}
+
+void loadProfile(byte id)
+{
+  profiles[activeProfile].unload();
+  profiles[id].load();
+  activeProfile = id;
+  ControlSetpoint();
+}
+
+void saveProfile(byte id)
+{
+  profiles[activeProfile].unload();
+  profiles[id].save();
+  activeProfile = id;
+  ControlSetpoint();
+}
+
+void topSensorClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:   ControlTopPID(); break;
+    case CONTROLLING_TOP_PID:     ControlSetpoint(); break;
+    case CONTROLLING_BOTTOM_PID:  ControlTopPID(); break;
+  }
+}
+void bottomSensorClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:   ControlBottomPID(); break;
+    case CONTROLLING_TOP_PID:     ControlBottomPID(); break;
+    case CONTROLLING_BOTTOM_PID:  ControlSetpoint(); break;
+  }
+}
 
 /*
 rant (
@@ -504,7 +554,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > topTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < topTempControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
+        case CLICK_EVENT :      topSensorClick(); break;
         case LONG_CLICK_EVENT : break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
@@ -582,7 +632,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > bottomTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
+        case CLICK_EVENT :      bottomSensorClick(); break;
         case LONG_CLICK_EVENT : break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
@@ -633,7 +683,6 @@ void setup()
 
   loadProfile(4);
 
-  draw();
 }
 
 
