@@ -87,18 +87,24 @@ class Coordinates {
       endY = startY+gridInternalHeight;
     };
 };
-
-class MinusButton : public Coordinates {
+class Block : public Coordinates {
   public:
-    void draw(void) {
-      myGLCD.setColor(BLUE);
-      myGLCD.fillRect(startX, startY, endX, endY);
-      myGLCD.setColor(BLACK);
-      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
-    };
+    int backgroundColor = BLACK;
+    int foregroundColor = WHITE;
 };
 
-class SetControl : public Coordinates {
+class MinusButton : public Block {
+  public:
+    void draw(void) {
+      myGLCD.setColor(backgroundColor);
+      myGLCD.fillRect(startX, startY, endX, endY);
+      myGLCD.setColor(foregroundColor);
+      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
+    };
+    MinusButton() { backgroundColor = BLUE; foregroundColor = BLACK; }
+};
+
+class SetControl : public Block {
   public:
     int value;
     void setCoordinates(int x, int y) {
@@ -108,26 +114,27 @@ class SetControl : public Coordinates {
       endY = startY+gridInternalHeight;
     };
     void draw(void) {
-      myGLCD.setColor(BLACK);
+      myGLCD.setColor(backgroundColor);
       myGLCD.fillRect(startX, startY, endX, endY);
-      myGLCD.setTextColor(WHITE, BLACK);
+      myGLCD.setTextColor(foregroundColor, backgroundColor);
       myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
       myGLCD.print(String(value), startX+12, startY+11);
     };
 };
 
-class PlusButton : public Coordinates {
+class PlusButton : public Block {
   public:
     void draw(void) {
-      myGLCD.setColor(RED);
+      myGLCD.setColor(backgroundColor);
       myGLCD.fillRect(startX, startY, startX+62, endY);
-      myGLCD.setColor(BLACK);
+      myGLCD.setColor(foregroundColor);
       myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
       myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
+    PlusButton() { backgroundColor = RED; foregroundColor = BLACK; }
 };
 
-class Sensors : public Coordinates {
+class Sensors : public Block {
   public:
     int value1;
     int value2;
@@ -135,14 +142,18 @@ class Sensors : public Coordinates {
     Sensors(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
       Sensor1(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
     {};
+
+    void highlight(void) { backgroundColor = GREEN; foregroundColor = BLACK; };
+    void lowlight(void) { backgroundColor = BLACK; foregroundColor = WHITE; };
+
     void draw(void) {
-      myGLCD.setColor(BLACK);
+      myGLCD.setColor(backgroundColor);
       myGLCD.fillRect(startX, startY, endX, endY);
-      myGLCD.setTextColor(WHITE);
+      myGLCD.setTextColor(foregroundColor, backgroundColor);
       myGLCD.setTextSize(SENSOR_TEXT_SIZE);
       myGLCD.print(String(value1), startX+7, startY+7);
       myGLCD.print(String(value2), startX+18+7, startY+35);
-      myGLCD.setColor(WHITE);
+      myGLCD.setColor(foregroundColor);
       myGLCD.fillRect(startX+7, startY+35+18 , startX+7+13, startY+35+19);
       myGLCD.fillRect(startX+7, startY+35+7 , startX+7+13, startY+35+8);
       myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
@@ -157,7 +168,7 @@ class Control : public Coordinates {
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    Coordinates sensors;
+    Block sensors;
     virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -209,8 +220,8 @@ class TempControl : public Control {
 } topTempControl(pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
   bottomTempControl(pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
 
-class Profile : public Coordinates {
 
+class Profile : public Block {
   public:
     int bottomTemp;
     int topTemp;
@@ -227,17 +238,14 @@ class Profile : public Coordinates {
     void draw (void)
     {
       if (isActive)
-      {
-        myGLCD.setColor(GREEN);
-        myGLCD.fillRect(startX, startY, endX, endY);
-        myGLCD.setTextColor(BLACK);
-      }
+        { backgroundColor = GREEN; foregroundColor = BLACK; }
       else
-      {
-        myGLCD.setColor(BLACK);
-        myGLCD.fillRect(startX, startY, endX, endY);
-        myGLCD.setTextColor(WHITE);
-      }
+        { backgroundColor = BLACK; foregroundColor = WHITE; }
+
+      myGLCD.setColor(backgroundColor);
+      myGLCD.fillRect(startX, startY, endX, endY);
+
+      myGLCD.setTextColor(foregroundColor, backgroundColor);
       myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
       myGLCD.print(String(id+1), startX+9 , startY+9);
       myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
