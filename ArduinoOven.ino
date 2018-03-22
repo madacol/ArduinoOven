@@ -113,13 +113,14 @@ class SetControl : public Block {
       endX = startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
       endY = startY+gridInternalHeight;
     };
-    void draw(void) {
+    void draw(int number) {
       myGLCD.setColor(backgroundColor);
       myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
       myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-      myGLCD.print(String(value), startX+12, startY+11);
+      myGLCD.print(String(number), startX+12, startY+11);
     };
+    void draw(void) {draw(value);};
 };
 
 class PlusButton : public Block {
@@ -179,11 +180,12 @@ class Control : public Coordinates {
       plusButton.setCoordinates(startX+gridWidth*3, startY);
       sensors.setCoordinates(startX+gridWidth*4, startY);
     };
-    virtual void draw(void) {
+    virtual void draw(int setControlNumber) {
       minusButton.draw();
+      setControl.draw(setControlNumber);
       plusButton.draw();
-      setControl.draw();
     };
+    virtual void draw(void) {draw(setControl.value);};
     void decreaseSetControl(void) {
       setControl.value--;
       setControl.draw();
@@ -210,12 +212,13 @@ class TempControl : public Control {
       plusButton.setCoordinates(startX+gridWidth*3, startY);
       sensors.setCoordinates(startX+gridWidth*4, startY);
     };
-    void draw(void) {
+    void draw(int setControlNumber) {
       minusButton.draw();
-      setControl.draw();
+      setControl.draw(setControlNumber);
       plusButton.draw();
       sensors.draw();
     };
+    void draw(void) {draw(setControl.value);};
 // TempControl(SensorCLK, SensorCS, SensorDO)
 } topTempControl(pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
   bottomTempControl(pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
