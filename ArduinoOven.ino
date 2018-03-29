@@ -27,6 +27,10 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define PID_KP 2
 #define PID_KI 5
 #define PID_KD 1
+#define TOP_OUTPUT_MIN       70
+#define TOP_OUTPUT_MAX       145
+#define BOTTOM_OUTPUT_MIN    70
+#define BOTTOM_OUTPUT_MAX    145
 
 // TouchScreen
 #include <TouchScreen.h>
@@ -57,17 +61,19 @@ TSPoint tp, last_tp;
 Thread updateSensorsThread = Thread();
 Thread drawSensorsThread = Thread();
 Thread bottomPIDThread = Thread();
+Thread drawGraphPointThread = Thread();
 
 // Colors
-#define YELLOW  0xFFE0
-#define WHITE   0xFFFF
-#define BLACK   0x0000
-#define BLUE    0x001F
-#define RED     0xF800
-#define GREEN   0x07E0
-#define GREY    0x7BEF
-#define CYAN    0x07FF
-#define MAGENTA 0xF81F
+#define YELLOW      0xFFE0
+#define WHITE       0xFFFF
+#define BLACK       0x0000
+#define BLUE        0x001F
+#define RED         0xF800
+#define GREEN       0x07E0
+#define GREY        0x7BEF
+#define CYAN        0x07FF
+#define MAGENTA     0xF81F
+#define PALEGREEN   0x9FD3
 
 // Text sizes
 #define SET_CONTROL_TEXT_SIZE   6
@@ -462,25 +468,34 @@ void draw(void)
       cookTimeControl.draw(bottomPID.ki);
       bottomTempControl.draw(bottomPID.kd);
     break;
+    case SHOWING_GRAPH:
+      //clean screen
+      myGLCD.setColor(BLACK);
+      myGLCD.fillRect(0,0, dispX-1,dispY-1);
+    break;
   }
 }
 
-void ControlSetpoint (void) {
+void controlSetpoint (void) {
   state = CONTROLLING_SETPOINTS;
   bottomTempControl.sensors.lowlight();
   topTempControl.sensors.lowlight();
   draw();
 }
-void ControlBottomPID (void) {
+void controlBottomPID (void) {
   state = CONTROLLING_BOTTOM_PID;
   bottomTempControl.sensors.highlight();
   topTempControl.sensors.lowlight();
   draw();
 }
-void ControlTopPID (void) {
+void controlTopPID (void) {
   state = CONTROLLING_TOP_PID;
   topTempControl.sensors.highlight();
   bottomTempControl.sensors.lowlight();
+  draw();
+}
+void showGraph (void) {
+  state = SHOWING_GRAPH;
   draw();
 }
 
@@ -489,7 +504,7 @@ void loadProfile(byte id)
   profiles[activeProfile].unload();
   profiles[id].load();
   activeProfile = id;
-  ControlSetpoint();
+  controlSetpoint();
 }
 
 void saveProfile(byte id)
@@ -497,7 +512,15 @@ void saveProfile(byte id)
   profiles[activeProfile].unload();
   profiles[id].save();
   activeProfile = id;
-  ControlSetpoint();
+  controlSetpoint();
+}
+
+void profileClick (byte id=0) {
+  if (state == SHOWING_GRAPH) controlSetpoint();  else  loadProfile(id);
+}
+
+void profileLongClick (byte id=0) {
+  if (state == SHOWING_GRAPH) controlSetpoint();  else  saveProfile(id);
 }
 
 void topMinusButtonClick (void) {
@@ -505,6 +528,7 @@ void topMinusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   topTempControl.decreaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.decreaseKp(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKp(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void centerMinusButtonClick (void) {
@@ -512,6 +536,7 @@ void centerMinusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   cookTimeControl.decreaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.decreaseKi(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKi(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void bottomMinusButtonClick (void) {
@@ -519,6 +544,7 @@ void bottomMinusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   bottomTempControl.decreaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.decreaseKd(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKd(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void topPlusButtonClick (void) {
@@ -526,6 +552,7 @@ void topPlusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   topTempControl.increaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.increaseKp(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKp(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void centerPlusButtonClick (void) {
@@ -533,6 +560,7 @@ void centerPlusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   cookTimeControl.increaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.increaseKi(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKi(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void bottomPlusButtonClick (void) {
@@ -540,20 +568,29 @@ void bottomPlusButtonClick (void) {
     case CONTROLLING_SETPOINTS:   bottomTempControl.increaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.increaseKd(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKd(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void topSensorClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   ControlTopPID(); break;
-    case CONTROLLING_TOP_PID:     ControlSetpoint(); break;
-    case CONTROLLING_BOTTOM_PID:  ControlTopPID(); break;
+    case CONTROLLING_SETPOINTS:   controlTopPID(); break;
+    case CONTROLLING_TOP_PID:     controlSetpoint(); break;
+    case CONTROLLING_BOTTOM_PID:  controlTopPID(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
+  }
+}
+void centerSensorClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:   showGraph(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 void bottomSensorClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   ControlBottomPID(); break;
-    case CONTROLLING_TOP_PID:     ControlBottomPID(); break;
-    case CONTROLLING_BOTTOM_PID:  ControlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:   controlBottomPID(); break;
+    case CONTROLLING_TOP_PID:     controlBottomPID(); break;
+    case CONTROLLING_BOTTOM_PID:  controlSetpoint(); break;
+    case SHOWING_GRAPH:           controlSetpoint(); break;
   }
 }
 
@@ -577,8 +614,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     if (tpt.x > profiles[0].startX+DEAD_ZONE  &&  tpt.x < profiles[0].endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      loadProfile(0); break;
-        case LONG_CLICK_EVENT : saveProfile(0); break;
+        case CLICK_EVENT :      profileClick(0); break;
+        case LONG_CLICK_EVENT : profileLongClick(0); break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
       }
@@ -586,8 +623,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > profiles[1].startX+DEAD_ZONE  &&  tpt.x < profiles[1].endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      loadProfile(1); break;
-        case LONG_CLICK_EVENT : saveProfile(1); break;
+        case CLICK_EVENT :      profileClick(1); break;
+        case LONG_CLICK_EVENT : profileLongClick(1); break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
       }
@@ -595,8 +632,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > profiles[2].startX+DEAD_ZONE  &&  tpt.x < profiles[2].endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      loadProfile(2); break;
-        case LONG_CLICK_EVENT : saveProfile(2); break;
+        case CLICK_EVENT :      profileClick(2); break;
+        case LONG_CLICK_EVENT : profileLongClick(2); break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
       }
@@ -604,8 +641,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > profiles[3].startX+DEAD_ZONE  &&  tpt.x < profiles[3].endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      loadProfile(3); break;
-        case LONG_CLICK_EVENT : saveProfile(3); break;
+        case CLICK_EVENT :      profileClick(3); break;
+        case LONG_CLICK_EVENT : profileLongClick(3); break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
       }
@@ -613,8 +650,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > profiles[4].startX+DEAD_ZONE  &&  tpt.x < profiles[4].endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      loadProfile(4); break;
-        case LONG_CLICK_EVENT : saveProfile(4); break;
+        case CLICK_EVENT :      profileClick(4); break;
+        case LONG_CLICK_EVENT : profileLongClick(4); break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
       }
@@ -691,7 +728,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     else if (tpt.x > cookTimeControl.sensors.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
+        case CLICK_EVENT :      centerSensorClick(); break;
         case LONG_CLICK_EVENT : break;
         case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  break;
@@ -782,6 +819,32 @@ void computeBottomPID (void)
   //bottomValve.detach();
 }
 
+void drawGraphPoint()
+{
+  static int column;
+  // scale so the graph shows 0-400 from bottom to top
+  int topInput =        map(topPID.input,       0, 400, dispY-1, 0);
+  int topSetpoint =     map(topPID.setpoint,    0, 400, dispY-1, 0);
+  int topOutput =       map(topPID.output,      0, 400, dispY-1, 0);
+  int bottomInput =     map(bottomPID.input,    0, 400, dispY-1, 0);
+  int bottomSetpoint =  map(bottomPID.setpoint, 0, 400, dispY-1, 0);
+  int bottomOutput =    map(bottomPID.output,   0, 400, dispY-1, 0);
+
+  // clean column by drawing a BLACK line from top to bottom
+  myGLCD.setColor(BLACK);       myGLCD.drawLine(column,0,column,dispY-1);
+
+  // draw points on the graph
+  myGLCD.setColor(PALEGREEN);   myGLCD.drawPixel(column, bottomSetpoint);
+  myGLCD.setColor(GREEN);       myGLCD.drawPixel(column-1, topSetpoint);
+  myGLCD.setColor(CYAN);        myGLCD.drawPixel(column, bottomOutput);
+  myGLCD.setColor(BLUE);        myGLCD.drawPixel(column-1, topOutput);
+  myGLCD.setColor(MAGENTA);     myGLCD.drawPixel(column, bottomInput);
+  myGLCD.setColor(RED);         myGLCD.drawPixel(column-1, topInput);
+
+  column++;
+  if (column >= 320) column = 0;
+}
+
 
 // ###############################################################
 // #########################    SETUP    #########################
@@ -820,23 +883,27 @@ void setup()
   pinMode(pinBottomTempSensor1GND, OUTPUT); digitalWrite(pinBottomTempSensor1GND, LOW);
 
   loadProfile(0);
-  delay(300);   // wait for MAX chip to stabilize
+  delay(500);   // wait for MAX chip to stabilize
 
   // Threads
   updateSensorsThread.onRun(updateSensors);
   updateSensorsThread.setInterval(1000);
   drawSensorsThread.onRun(drawSensors);
   drawSensorsThread.setInterval(3000);
+  drawGraphPointThread.onRun(drawGraphPoint);
+  drawGraphPointThread.setInterval(200);
 
   // PIDs
   topPID.input = topTempControl.sensors.value1;
   topPID.setpoint = topTempControl.setControl.value;
   topPID.SetMode(AUTOMATIC);
   topPID.SetSampleTime(1000);
+  topPID.SetOutputLimits(TOP_OUTPUT_MIN, TOP_OUTPUT_MAX);
   bottomPID.input = bottomTempControl.sensors.value1;
   bottomPID.setpoint = bottomTempControl.setControl.value;
   bottomPID.SetMode(AUTOMATIC);
   bottomPID.SetSampleTime(1000);
+  bottomPID.SetOutputLimits(BOTTOM_OUTPUT_MIN, BOTTOM_OUTPUT_MAX);
 
   pinMode(CONVEYOR_SERVO_PIN, OUTPUT);
   pinMode(BOTTOM_SERVO_PIN, OUTPUT);
@@ -850,8 +917,11 @@ void setup()
 
 void loop()
 {
+  // Threads
   if (updateSensorsThread.shouldRun())  {updateSensorsThread.run();  showPIDs();}
-  if (drawSensorsThread.shouldRun())    drawSensorsThread.run();
+  if (drawSensorsThread.shouldRun() && state !=SHOWING_GRAPH)   drawSensorsThread.run();
+  if (drawGraphPointThread.shouldRun() && state==SHOWING_GRAPH) drawGraphPointThread.run();
+
   if (analogRead(CONVEYOR_SERVO_PIN) != cookTimeControl.setControl.value)
     analogWrite(CONVEYOR_SERVO_PIN, cookTimeControl.setControl.value);
   computeTopPID();
