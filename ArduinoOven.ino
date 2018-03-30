@@ -133,9 +133,9 @@ class MinusButton : public Block {
   public:
     void draw(void) {
       myGLCD.setColor(backgroundColor);
-      myGLCD.fillRect(startX, startY, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setColor(foregroundColor);
-      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
+        myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     MinusButton() { backgroundColor = BLUE; foregroundColor = BLACK; }
 };
@@ -151,10 +151,10 @@ class SetControl : public Block {
     };
     void draw(int number) {
       myGLCD.setColor(backgroundColor);
-      myGLCD.fillRect(startX, startY, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
-      myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-      myGLCD.print(String(number), startX+12, startY+11);
+        myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
+          myGLCD.print(String(number), startX+12, startY+11);
     };
     void draw(void) {draw(value);};
 };
@@ -163,10 +163,10 @@ class PlusButton : public Block {
   public:
     void draw(void) {
       myGLCD.setColor(backgroundColor);
-      myGLCD.fillRect(startX, startY, startX+62, endY);
+        myGLCD.fillRect(startX, startY, startX+62, endY);
       myGLCD.setColor(foregroundColor);
-      myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
-      myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
+        myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
+        myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     PlusButton() { backgroundColor = RED; foregroundColor = BLACK; }
 };
@@ -185,15 +185,15 @@ class Sensors : public Block {
 
     void draw(void) {
       myGLCD.setColor(backgroundColor);
-      myGLCD.fillRect(startX, startY, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
-      myGLCD.setTextSize(SENSOR_TEXT_SIZE);
-      myGLCD.print(String(int(value1)), startX+7, startY+7);
-      myGLCD.print(String(int(value2)), startX+18+7, startY+35);
+        myGLCD.setTextSize(SENSOR_TEXT_SIZE);
+          myGLCD.print(String(int(value1)), startX+7, startY+7);
+          myGLCD.print(String(int(value2)), startX+18+7, startY+35);
       myGLCD.setColor(foregroundColor);
-      myGLCD.fillRect(startX+7, startY+35+18 , startX+7+13, startY+35+19);
-      myGLCD.fillRect(startX+7, startY+35+7 , startX+7+13, startY+35+8);
-      myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
+        myGLCD.fillRect(startX+7, startY+35+18 , startX+7+13, startY+35+19);
+        myGLCD.fillRect(startX+7, startY+35+7 , startX+7+13, startY+35+8);
+        myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
     };
     void update(void) {
       value1 = Sensor1.readCelsius();
@@ -304,15 +304,15 @@ class Profile : public Block {
         { backgroundColor = BLACK; foregroundColor = WHITE; }
 
       myGLCD.setColor(backgroundColor);
-      myGLCD.fillRect(startX, startY, endX, endY);
+        myGLCD.fillRect(startX, startY, endX, endY);
 
       myGLCD.setTextColor(foregroundColor, backgroundColor);
-      myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
-      myGLCD.print(String(id+1), startX+9 , startY+9);
-      myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
-      myGLCD.print(String(topTemp), startX+38, startY+6);
-      myGLCD.print(String(cookTime), startX+38, startY+6+14);
-      myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
+        myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
+          myGLCD.print(String(id+1), startX+9 , startY+9);
+        myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
+          myGLCD.print(String(topTemp), startX+38, startY+6);
+          myGLCD.print(String(cookTime), startX+38, startY+6+14);
+          myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
     };
 
     void load(void)
@@ -442,13 +442,13 @@ void drawDivisions(void)
 {
   if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
   myGLCD.setColor(WHITE);
-  myGLCD.drawLine(gridWidth-1+isOutline , dispY-1 , gridWidth-1+isOutline , 0);
-  myGLCD.drawLine(gridWidth*2-1+isOutline , 0 , gridWidth*2-1+isOutline , dispY-gridHeight*3);
-  myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
-  myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
-  myGLCD.drawLine(0 , topTempControl.startY-1 , dispX-1 , topTempControl.startY-1);
-  myGLCD.drawLine(0 , cookTimeControl.startY-1 , dispX-1 , cookTimeControl.startY-1);
-  myGLCD.drawLine(0 , bottomTempControl.startY-1 , dispX-1 , bottomTempControl.startY-1);
+    myGLCD.drawLine(gridWidth-1+isOutline , dispY-1 , gridWidth-1+isOutline , 0);
+    myGLCD.drawLine(gridWidth*2-1+isOutline , 0 , gridWidth*2-1+isOutline , dispY-gridHeight*3);
+    myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
+    myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
+    myGLCD.drawLine(0 , topTempControl.startY-1 , dispX-1 , topTempControl.startY-1);
+    myGLCD.drawLine(0 , cookTimeControl.startY-1 , dispX-1 , cookTimeControl.startY-1);
+    myGLCD.drawLine(0 , bottomTempControl.startY-1 , dispX-1 , bottomTempControl.startY-1);
 }
 
 void draw(void)
@@ -477,8 +477,7 @@ void draw(void)
     break;
     case SHOWING_GRAPH:
       //clean screen
-      myGLCD.setColor(BLACK);
-      myGLCD.fillRect(0,0, dispX-1,dispY-1);
+      myGLCD.setColor(BLACK);      myGLCD.fillRect(0,0, dispX-1,dispY-1);
     break;
   }
 }
@@ -828,10 +827,10 @@ void drawGraphPoint()
 
   // draw points on the graph
   myGLCD.setColor(PALEGREEN);   myGLCD.drawPixel(column, bottomSetpoint);
-  myGLCD.setColor(GREEN);       myGLCD.drawPixel(column-1, topSetpoint);
   myGLCD.setColor(CYAN);        myGLCD.drawPixel(column, bottomOutput);
-  myGLCD.setColor(BLUE);        myGLCD.drawPixel(column-1, topOutput);
   myGLCD.setColor(MAGENTA);     myGLCD.drawPixel(column, bottomInput);
+  myGLCD.setColor(GREEN);       myGLCD.drawPixel(column-1, topSetpoint);
+  myGLCD.setColor(BLUE);        myGLCD.drawPixel(column-1, topOutput);
   myGLCD.setColor(RED);         myGLCD.drawPixel(column-1, topInput);
 
   column++;
@@ -919,16 +918,19 @@ void setup()
 void loop()
 {
   // Threads
-  if (updateSensorsThread.shouldRun())  {updateSensorsThread.run();  showPIDs();}
-  if (drawSensorsThread.shouldRun() && state !=SHOWING_GRAPH)   drawSensorsThread.run();
-  if (drawGraphPointThread.shouldRun() && state==SHOWING_GRAPH) drawGraphPointThread.run();
+  if (updateSensorsThread.shouldRun())      {updateSensorsThread.run(); showPIDs();}
   if (topPIDThread.shouldRun())             topPIDThread.run();
   if (bottomPIDThread.shouldRun())          bottomPIDThread.run();
+  if (state == SHOWING_GRAPH) {
+    if (drawGraphPointThread.shouldRun())   drawGraphPointThread.run();
+  } else {
+    if (drawSensorsThread.shouldRun())      drawSensorsThread.run();
+  }
 
   if (conveyorServo.read() != cookTimeControl.setControl.value)
     conveyorServo.write(cookTimeControl.setControl.value);
 
-  //Checking Touch
+  // Checking Touch
   tp = getTouch();
   TouchStatus=isPressed(tp);
   lastTimeSinceTouchStarted = timeSinceTouchStarted;
