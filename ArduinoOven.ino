@@ -18,19 +18,25 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 #define pinBottomTempSensor1GND  23
 
 // Servos
-#define TOP_SERVO_PIN       46
+#include <Servo.h>
+Servo topServo;
+Servo bottomServo;
+Servo conveyorServo;
+// min/max PWM width in uS
+#define TOP_SERVO_MIN_WIDTH       750
+#define TOP_SERVO_MAX_WIDTH       1300
+#define BOTTOM_SERVO_MIN_WIDTH    750
+#define BOTTOM_SERVO_MAX_WIDTH    1250
+// pins
+#define TOP_SERVO_PIN       44
 #define CONVEYOR_SERVO_PIN  45
-#define BOTTOM_SERVO_PIN    44
+#define BOTTOM_SERVO_PIN    46
 
 // PID
 #include <PID_v1.h>
-#define PID_KP 2
-#define PID_KI 5
-#define PID_KD 1
-#define TOP_OUTPUT_MIN       70
-#define TOP_OUTPUT_MAX       145
-#define BOTTOM_OUTPUT_MIN    70
-#define BOTTOM_OUTPUT_MAX    145
+#define PID_KP 50
+#define PID_KI 1
+#define PID_KD 30
 
 // TouchScreen
 #include <TouchScreen.h>
@@ -60,6 +66,7 @@ TSPoint tp, last_tp;
 #include <Thread.h>
 Thread updateSensorsThread = Thread();
 Thread drawSensorsThread = Thread();
+Thread topPIDThread = Thread();
 Thread bottomPIDThread = Thread();
 Thread drawGraphPointThread = Thread();
 
@@ -256,11 +263,11 @@ class Pid : public PID {
   public:
     int kp, ki, kd;
     double input, output, setpoint;
-    Pid(int _kp, int _ki, int _kd, byte P_ON_X=P_ON_E):
+    Pid(int _kp, int _ki, int _kd, byte P_ON_X, byte DIR):
       kp(_kp),
       ki(_ki),
       kd(_kd),
-      PID(&input, &output, &setpoint, _kp, _ki, _kd, P_ON_X, DIRECT)
+      PID(&input, &output, &setpoint, _kp, _ki, _kd, P_ON_X, DIR)
     {};
 
     void updateTuning(void) {SetTunings(kp,ki,kd);};
@@ -272,8 +279,8 @@ class Pid : public PID {
     void increaseKd (void) {kd++; updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--; updateTuning(); bottomTempControl.setControl.draw(kd);};
 
-} topPID(PID_KP, PID_KI, PID_KD),
-  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_M);
+} topPID(PID_KP, PID_KI, PID_KD, P_ON_E, REVERSE),
+  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_M, DIRECT);
 
 class Profile : public Block {
   public:
@@ -791,44 +798,30 @@ void drawSensors (void)
 void computeTopPID (void)
 {
   if (!isnan(topTempControl.sensors.value1))  topPID.input = topTempControl.sensors.value1;
+  // else  To-do: Alert Sensor Error
   topPID.setpoint = topTempControl.setControl.value;
   topPID.Compute();
-  /*
-  if (topPID.output > TOP_SERVO_MAX) topValve.write(TOP_SERVO_MAX);
-  else if (topPID.output < TOP_SERVO_MIN) topValve.write(TOP_SERVO_MIN);
-  else topValve.write(topPID.output);
-  delay(50);
-  topValve.detach();
-  */
-  analogWrite(TOP_SERVO_PIN, topPID.output);
+  topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
 {
   if (!isnan(bottomTempControl.sensors.value1))  bottomPID.input = bottomTempControl.sensors.value1;
+  // else  To-do: Alert Sensor Error
   bottomPID.setpoint = bottomTempControl.setControl.value;
   bottomPID.Compute();
-  //bottomValve.attach(BOTTOM_SERVO_PIN);
-  /*
-  if (bottomPID.output > BOTTOM_SERVO_MAX) bottomPID.output=BOTTOM_SERVO_MAX;
-  else if (bottomPID.output < BOTTOM_SERVO_MIN) bottomPID.output=BOTTOM_SERVO_MIN;
-  bottomValve.write(bottomPID.output);
-  */
-  analogWrite(BOTTOM_SERVO_PIN, bottomPID.output);
-
-  //delay(50);
-  //bottomValve.detach();
+  bottomServo.writeMicroseconds(bottomPID.output);
 }
 
 void drawGraphPoint()
 {
   static int column;
   // scale so the graph shows 0-400 from bottom to top
-  int topInput =        map(topPID.input,       0, 400, dispY-1, 0);
-  int topSetpoint =     map(topPID.setpoint,    0, 400, dispY-1, 0);
-  int topOutput =       map(topPID.output,      0, 400, dispY-1, 0);
-  int bottomInput =     map(bottomPID.input,    0, 400, dispY-1, 0);
-  int bottomSetpoint =  map(bottomPID.setpoint, 0, 400, dispY-1, 0);
-  int bottomOutput =    map(bottomPID.output,   0, 400, dispY-1, 0);
+  int topInput =        map(topPID.input,       0, 400, (dispY-1)/2, 0);
+  int topSetpoint =     map(topPID.setpoint,    0, 400, (dispY-1)/2, 0);
+  int topOutput =       map(topPID.output,      TOP_SERVO_MIN_WIDTH, TOP_SERVO_MAX_WIDTH, (dispY-1)/2, 0);
+  int bottomInput =     map(bottomPID.input,    0, 400, dispY-1, (dispY-1)/2);
+  int bottomSetpoint =  map(bottomPID.setpoint, 0, 400, dispY-1, (dispY-1)/2);
+  int bottomOutput =    map(bottomPID.output,   BOTTOM_SERVO_MIN_WIDTH, BOTTOM_SERVO_MAX_WIDTH, dispY-1, (dispY-1)/2);
 
   // clean column by drawing a BLACK line from top to bottom
   myGLCD.setColor(BLACK);       myGLCD.drawLine(column,0,column,dispY-1);
@@ -888,6 +881,10 @@ void setup()
   // Threads
   updateSensorsThread.onRun(updateSensors);
   updateSensorsThread.setInterval(1000);
+  topPIDThread.onRun(computeTopPID);
+  topPIDThread.setInterval(1000);
+  bottomPIDThread.onRun(computeBottomPID);
+  bottomPIDThread.setInterval(1000);
   drawSensorsThread.onRun(drawSensors);
   drawSensorsThread.setInterval(3000);
   drawGraphPointThread.onRun(drawGraphPoint);
@@ -896,17 +893,21 @@ void setup()
   // PIDs
   topPID.input = topTempControl.sensors.value1;
   topPID.setpoint = topTempControl.setControl.value;
-  topPID.SetMode(AUTOMATIC);
   topPID.SetSampleTime(1000);
-  topPID.SetOutputLimits(TOP_OUTPUT_MIN, TOP_OUTPUT_MAX);
+  topPID.SetOutputLimits(TOP_SERVO_MIN_WIDTH, TOP_SERVO_MAX_WIDTH);
+  topPID.SetMode(AUTOMATIC);
   bottomPID.input = bottomTempControl.sensors.value1;
   bottomPID.setpoint = bottomTempControl.setControl.value;
-  bottomPID.SetMode(AUTOMATIC);
   bottomPID.SetSampleTime(1000);
-  bottomPID.SetOutputLimits(BOTTOM_OUTPUT_MIN, BOTTOM_OUTPUT_MAX);
+  bottomPID.SetOutputLimits(BOTTOM_SERVO_MIN_WIDTH, BOTTOM_SERVO_MAX_WIDTH);
+  bottomPID.SetMode(AUTOMATIC);
 
-  pinMode(CONVEYOR_SERVO_PIN, OUTPUT);
-  pinMode(BOTTOM_SERVO_PIN, OUTPUT);
+  // Servos
+  topServo.attach(TOP_SERVO_PIN);
+  bottomServo.attach(BOTTOM_SERVO_PIN);
+  //pinMode(CONVEYOR_SERVO_PIN, OUTPUT);
+  //pinMode(BOTTOM_SERVO_PIN, OUTPUT);
+  conveyorServo.attach(CONVEYOR_SERVO_PIN);
 }
 
 
@@ -921,11 +922,11 @@ void loop()
   if (updateSensorsThread.shouldRun())  {updateSensorsThread.run();  showPIDs();}
   if (drawSensorsThread.shouldRun() && state !=SHOWING_GRAPH)   drawSensorsThread.run();
   if (drawGraphPointThread.shouldRun() && state==SHOWING_GRAPH) drawGraphPointThread.run();
+  if (topPIDThread.shouldRun())             topPIDThread.run();
+  if (bottomPIDThread.shouldRun())          bottomPIDThread.run();
 
-  if (analogRead(CONVEYOR_SERVO_PIN) != cookTimeControl.setControl.value)
-    analogWrite(CONVEYOR_SERVO_PIN, cookTimeControl.setControl.value);
-  computeTopPID();
-  computeBottomPID();
+  if (conveyorServo.read() != cookTimeControl.setControl.value)
+    conveyorServo.write(cookTimeControl.setControl.value);
 
   //Checking Touch
   tp = getTouch();
