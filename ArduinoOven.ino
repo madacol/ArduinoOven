@@ -622,8 +622,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       switch (event) {
         case CLICK_EVENT :      profileClick(0); break;
         case LONG_CLICK_EVENT : profileLongClick(0); break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > profiles[1].startX+DEAD_ZONE  &&  tpt.x < profiles[1].endX-DEAD_ZONE)
@@ -631,8 +631,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       switch (event) {
         case CLICK_EVENT :      profileClick(1); break;
         case LONG_CLICK_EVENT : profileLongClick(1); break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > profiles[2].startX+DEAD_ZONE  &&  tpt.x < profiles[2].endX-DEAD_ZONE)
@@ -640,8 +640,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       switch (event) {
         case CLICK_EVENT :      profileClick(2); break;
         case LONG_CLICK_EVENT : profileLongClick(2); break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > profiles[3].startX+DEAD_ZONE  &&  tpt.x < profiles[3].endX-DEAD_ZONE)
@@ -649,8 +649,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       switch (event) {
         case CLICK_EVENT :      profileClick(3); break;
         case LONG_CLICK_EVENT : profileLongClick(3); break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > profiles[4].startX+DEAD_ZONE  &&  tpt.x < profiles[4].endX-DEAD_ZONE)
@@ -658,8 +658,8 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       switch (event) {
         case CLICK_EVENT :      profileClick(4); break;
         case LONG_CLICK_EVENT : profileLongClick(4); break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
   }
@@ -669,26 +669,26 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      topMinusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  topMinusButtonClick(); break;
       }
     }
     else if (tpt.x > topTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < topTempControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case CLICK_EVENT :      break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > topTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < topTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      topPlusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  topPlusButtonClick(); break;
       }
     }
@@ -696,9 +696,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      topSensorClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
   }
@@ -708,26 +708,26 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      centerMinusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  centerMinusButtonClick(); break;
       }
     }
     else if (tpt.x > cookTimeControl.setControl.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case CLICK_EVENT :      break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > cookTimeControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerPlusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  centerPlusButtonClick(); break;
       }
     }
@@ -735,9 +735,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      centerSensorClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
   }
@@ -747,26 +747,26 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      bottomMinusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  bottomMinusButtonClick(); break;
       }
     }
     else if (tpt.x > bottomTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case CLICK_EVENT :      break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
     else if (tpt.x > bottomTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      bottomPlusButtonClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
         case LONG_HOLD_EVENT :  bottomPlusButtonClick(); break;
       }
     }
@@ -774,9 +774,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      bottomSensorClick(); break;
-        case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       break;
-        case LONG_HOLD_EVENT :  break;
+        //case LONG_CLICK_EVENT : break;
+        //case HOLD_EVENT :       break;
+        //case LONG_HOLD_EVENT :  break;
       }
     }
   }
