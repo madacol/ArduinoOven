@@ -35,7 +35,7 @@ Servo conveyorServo;
 // PID
 #include <PID_v1.h>
 #define PID_KP 50
-#define PID_KI 1
+#define PID_KI 0.1
 #define PID_KD 30
 
 // TouchScreen
@@ -149,12 +149,16 @@ class SetControl : public Block {
       endX = startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
       endY = startY+gridInternalHeight;
     };
-    void draw(int number) {
+    void draw(double number) {
+      String number_str;
+      char buffer[6];
+      if (number == int(number))  number_str=String(int(number));
+      else                        number_str=dtostrf(number,1,1, buffer);
       myGLCD.setColor(backgroundColor);
         myGLCD.fillRect(startX, startY, endX, endY);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-          myGLCD.print(String(number), startX+12, startY+11);
+          myGLCD.print(number_str, startX+12, startY+11);
     };
     void draw(void) {draw(value);};
 };
@@ -216,7 +220,7 @@ class Control : public Coordinates {
       plusButton.setCoordinates(startX+gridWidth*3, startY);
       sensors.setCoordinates(startX+gridWidth*4, startY);
     };
-    virtual void draw(int setControlNumber) {
+    virtual void draw(double setControlNumber) {
       minusButton.draw();
       setControl.draw(setControlNumber);
       plusButton.draw();
@@ -248,7 +252,7 @@ class TempControl : public Control {
       plusButton.setCoordinates(startX+gridWidth*3, startY);
       sensors.setCoordinates(startX+gridWidth*4, startY);
     };
-    void draw(int setControlNumber) {
+    void draw(double setControlNumber) {
       minusButton.draw();
       setControl.draw(setControlNumber);
       plusButton.draw();
@@ -261,9 +265,9 @@ class TempControl : public Control {
 
 class Pid : public PID {
   public:
-    int kp, ki, kd;
+    double kp, ki, kd;
     double input, output, setpoint;
-    Pid(int _kp, int _ki, int _kd, byte P_ON_X, byte DIR):
+    Pid(double _kp, double _ki, double _kd, byte P_ON_X, byte DIR):
       kp(_kp),
       ki(_ki),
       kd(_kd),
@@ -274,8 +278,8 @@ class Pid : public PID {
 
     void increaseKp (void) {kp++; updateTuning(); topTempControl.setControl.draw(kp);};
     void decreaseKp (void) {kp--; updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki++; updateTuning(); cookTimeControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki--; updateTuning(); cookTimeControl.setControl.draw(ki);};
+    void increaseKi (void) {ki+=0.1; updateTuning(); cookTimeControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.1; updateTuning(); cookTimeControl.setControl.draw(ki);};
     void increaseKd (void) {kd++; updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--; updateTuning(); bottomTempControl.setControl.draw(kd);};
 
