@@ -3,6 +3,8 @@
 #include <Adafruit_GFX.h>
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
+// Declare which fonts we will be using
+extern uint8_t SmallFont[];
 
 // Thermocouples
 #include "max6675.h"
@@ -857,7 +859,7 @@ void setup()
   pinMode(A0, OUTPUT);
   myGLCD.InitLCD(TOUCH_ORIENTATION);
   myGLCD.clrScr();
-  myGLCD.setFont();
+  myGLCD.setFont(SmallFont);
 
   // Set coordinates
   dispX = myGLCD.getDisplayXSize();
