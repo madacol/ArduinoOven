@@ -7,17 +7,12 @@ UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
 extern uint8_t SmallFont[];
 
 // Thermocouples
-#include "max6675.h"
-#define pinTopTempSensor1DO  20
-#define pinTopTempSensor1CS  19
-#define pinTopTempSensor1CLK  18
-#define pinTopTempSensor1VCC  17
-#define pinTopTempSensor1GND  16
-#define pinBottomTempSensor1DO  31
-#define pinBottomTempSensor1CS  29
-#define pinBottomTempSensor1CLK  27
-#define pinBottomTempSensor1VCC  25
-#define pinBottomTempSensor1GND  23
+#include <max6675.h>
+#include <SPI.h>
+#define pinTopTempSensor1CS  23
+#define pinTopTempSensor2CS  25
+#define pinBottomTempSensor1CS  27
+#define pinBottomTempSensor2CS  29
 
 // Servos
 #include <Servo.h>
@@ -25,10 +20,10 @@ Servo topServo;
 Servo bottomServo;
 Servo conveyorServo;
 // min/max PWM width in uS
-#define TOP_SERVO_MIN_WIDTH       750
-#define TOP_SERVO_MAX_WIDTH       1300
+#define TOP_SERVO_MIN_WIDTH       780
+#define TOP_SERVO_MAX_WIDTH       1200
 #define BOTTOM_SERVO_MIN_WIDTH    750
-#define BOTTOM_SERVO_MAX_WIDTH    1250
+#define BOTTOM_SERVO_MAX_WIDTH    1500
 // pins
 #define TOP_SERVO_PIN       44
 #define CONVEYOR_SERVO_PIN  45
@@ -36,9 +31,9 @@ Servo conveyorServo;
 
 // PID
 #include <PID_v1.h>
-#define PID_KP 50
-#define PID_KI 0.1
-#define PID_KD 30
+#define PID_KP 10
+#define PID_KI 0.5
+#define PID_KD 5
 
 // TouchScreen
 #include <TouchScreen.h>
@@ -180,10 +175,12 @@ class PlusButton : public Block {
 class Sensors : public Block {
   public:
     double value1;
-    int value2;
+    double value2;
     MAX6675 Sensor1;
-    Sensors(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
-      Sensor1(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
+    MAX6675 Sensor2;
+    Sensors(byte pinSensor1CS,byte pinSensor2CS):
+      Sensor1(pinSensor1CS),
+      Sensor2(pinSensor2CS)
     {};
 
     void highlight(void) { backgroundColor = GREEN; foregroundColor = BLACK; };
@@ -195,14 +192,18 @@ class Sensors : public Block {
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
           myGLCD.print(String(int(value1)), startX+7, startY+7);
-          myGLCD.print(String(int(value2)), startX+18+7, startY+35);
+          myGLCD.print(String(int(value2)), startX+7, startY+35);
+
+      /* // Draw symbol: ±
       myGLCD.setColor(foregroundColor);
         myGLCD.fillRect(startX+7, startY+35+18 , startX+7+13, startY+35+19);
         myGLCD.fillRect(startX+7, startY+35+7 , startX+7+13, startY+35+8);
         myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
+      */
     };
     void update(void) {
       value1 = Sensor1.readCelsius();
+      value2 = Sensor2.readCelsius();
     };
 };
 
@@ -241,8 +242,8 @@ class Control : public Coordinates {
 class TempControl : public Control {
   public:
     Sensors sensors;
-    TempControl(byte pinSensor1DO, byte pinSensor1CS, byte pinSensor1CLK):
-      sensors(pinSensor1DO, pinSensor1CS, pinSensor1CLK)
+    TempControl(byte pinSensor1CS,byte pinSensor2CS):
+      sensors(pinSensor1CS, pinSensor2CS)
     {};
     void setCoordinates(int x, int y) {
       startX = x;
@@ -261,9 +262,9 @@ class TempControl : public Control {
       sensors.draw();
     };
     void draw(void) {draw(setControl.value);};
-// TempControl(SensorCLK, SensorCS, SensorDO)
-} topTempControl(pinTopTempSensor1CLK, pinTopTempSensor1CS, pinTopTempSensor1DO),
-  bottomTempControl(pinBottomTempSensor1CLK, pinBottomTempSensor1CS, pinBottomTempSensor1DO);
+// TempControl(SensorCS)
+} topTempControl(pinTopTempSensor1CS, pinTopTempSensor2CS),
+  bottomTempControl(pinBottomTempSensor1CS, pinBottomTempSensor2CS);
 
 class Pid : public PID {
   public:
@@ -286,7 +287,7 @@ class Pid : public PID {
     void decreaseKd (void) {kd--; updateTuning(); bottomTempControl.setControl.draw(kd);};
 
 } topPID(PID_KP, PID_KI, PID_KD, P_ON_E, REVERSE),
-  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_M, DIRECT);
+  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_E, DIRECT);
 
 class Profile : public Block {
   public:
@@ -350,9 +351,9 @@ class Profile : public Block {
 
 } profiles[] = {
   // Profile(topTemp, cookTime, bottomTemp)
-  Profile(30,127,30),
+  Profile(0,80,0),
   Profile(210,220,230),
-  Profile(310,320,330),
+  Profile(340,73,200),
   Profile(410,420,430),
   Profile(510,520,530),
 };
@@ -804,7 +805,8 @@ void computeTopPID (void)
 {
   if (!isnan(topTempControl.sensors.value1))  topPID.input = topTempControl.sensors.value1;
   // else  To-do: Alert Sensor Error
-  topPID.setpoint = topTempControl.setControl.value;
+  else topTempControl.sensors.backgroundColor = MAGENTA;
+  tpoPID.setpoint = topTempControl.setControl.value;
   topPID.Compute();
   topServo.writeMicroseconds(topPID.output);
 }
@@ -851,8 +853,9 @@ void drawGraphPoint()
 
 void setup()
 {
+  SPI.begin();
   Serial.begin(9600);
-  Serial.println("SpRvN");
+  Serial.println("ArduinoOven");
 
   // Display init
   digitalWrite(A0, HIGH);
@@ -873,12 +876,6 @@ void setup()
   cookTimeControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
   topTempControl.setCoordinates( isOutline, cookTimeControl.startY - gridHeight );
   calculateProfilesProperties();
-
-  // Thermocouple Init
-  pinMode(pinTopTempSensor1VCC, OUTPUT); digitalWrite(pinTopTempSensor1VCC, HIGH);
-  pinMode(pinTopTempSensor1GND, OUTPUT); digitalWrite(pinTopTempSensor1GND, LOW);
-  pinMode(pinBottomTempSensor1VCC, OUTPUT); digitalWrite(pinBottomTempSensor1VCC, HIGH);
-  pinMode(pinBottomTempSensor1GND, OUTPUT); digitalWrite(pinBottomTempSensor1GND, LOW);
 
   loadProfile(0);
   delay(500);   // wait for MAX chip to stabilize
