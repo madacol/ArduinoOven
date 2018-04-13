@@ -1,5 +1,5 @@
 // Display
-#define  TOUCH_ORIENTATION  3
+#define  ORIENTATION  1
 #include <Adafruit_GFX.h>
 #include <UTFTGLUE.h>            //we are using UTFT display methods
 UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
@@ -42,12 +42,13 @@ Servo conveyorServo;
 #define XM A1
 #define XP 7    //8
 TouchScreen myTouch(XP, YP, XM, YM, 300);
-TSPoint tp, last_tp;
-#define CLICK_TIME      30              // minimum ms after initial touch to trigger CLICK_EVENT
-#define HOLD_TIME       CLICK_TIME      // minimum ms after initial touch to trigger HOLD_EVENT
-#define LONG_CLICK_TIME 600             // minimum ms after initial touch to trigger LONG_CLICK_EVENT
-#define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms after initial touch to trigger LONG_HOLD_EVENT
-#define DEAD_ZONE 5 // outest pixels of objects where Touch-Events are disabled
+#define NUM_OF_SAMPLES 10
+#define QUORUM 3
+#define CLICK_TIME      30              // minimum ms since touch started to trigger CLICK_EVENT
+#define HOLD_TIME       CLICK_TIME      // minimum ms since touch started to trigger HOLD_EVENT
+#define LONG_CLICK_TIME 600             // minimum ms since touch started to trigger LONG_CLICK_EVENT
+#define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms since touch started to trigger LONG_HOLD_EVENT
+#define DEAD_ZONE 2 // outest pixels of blocks where Touch-Events are disabled
 // Touch events
 #define CLICK_EVENT       0
 #define LONG_CLICK_EVENT  1
@@ -67,7 +68,7 @@ Thread topPIDThread = Thread();
 Thread bottomPIDThread = Thread();
 Thread drawGraphPointThread = Thread();
 
-// Colors
+// Colors - RGB565 color picker -> https://ee-programming-notepad.blogspot.com.co/2016/10/16-bit-color-generator-picker.html
 #define YELLOW      0xFFE0
 #define WHITE       0xFFFF
 #define BLACK       0x0000
@@ -100,6 +101,7 @@ byte activeProfile;
 byte state;
 bool isOutline = false;
 
+TSPoint avgTouchPoint, last_avgTouchPoint;
 bool TouchStatus;       // the current value read from isPressed()
 bool lastTouchStatus = false;
 long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
@@ -379,42 +381,38 @@ void calculateProfilesProperties (void)
 
 TSPoint readResistiveTouch(void)
 {
-  TSPoint tpt = myTouch.getPoint();
+  TSPoint tp = myTouch.getPoint();
   pinMode(YP, OUTPUT);      //restore shared pins
   pinMode(XM, OUTPUT);
-  return tpt;
+  return tp;
 }
 
-TSPoint getTouch(void)
+TSPoint getAvgTouchPoint(void)
 {
-  TSPoint tpt;
+  TSPoint tp;
   byte count = 0;
-  #define sampleNum 10
-  #define quorum 3
-  for (byte i=0; i < sampleNum; i++)
+  for (byte i=0; i < NUM_OF_SAMPLES; i++)
   {
     TSPoint tptmp = readResistiveTouch();
     if (tptmp.z > 50 )
     {
-      tpt.x += tptmp.x;
-      tpt.y += tptmp.y;
-      tpt.z += tptmp.z;
+      tp.x += tptmp.x;
+      tp.y += tptmp.y;
+      tp.z += tptmp.z;
       count++;
     }
   }
-  //Serial.print("  count=");Serial.print(count);
-  //Serial.print(" z=");Serial.println(tpt.z);
-  if (count < quorum) tpt.z=0;
-  else { tpt.x /= count; tpt.y /= count; tpt.z /= count; } // get average
-  int temp = map(tpt.y, 85, 896, dispX-1, 0);
-  tpt.y = map(tpt.x, 907, 130, dispY-1, 0);
-  tpt.x = temp;
-  return tpt;
+  if (count < QUORUM) tp.z=0;
+  else { tp.x /= count; tp.y /= count; tp.z /= count; } // get average
+  int temp = map(tp.y, 85, 896, dispX-1, 0);
+  tp.y = map(tp.x, 907, 130, dispY-1, 0);
+  tp.x = temp;
+  return tp;
 }
 
-bool isPressed (TSPoint tpt)
+bool isPressed (TSPoint tp)
 {
-  return tpt.z > 0;
+  return tp.z > 0;
 }
 
 bool hasTouchStatusChanged () {
@@ -619,12 +617,12 @@ rant (
   Anyway, this is the *best* (¬¬ worst ¬¬) that I could come up with"
 );
 */
-void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
+void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
 {
   // Profiles
-  if (tpt.y > profiles[0].startY+DEAD_ZONE  &&  tpt.y < profiles[0].endY-DEAD_ZONE)
+  if (tp.y > profiles[0].startY+DEAD_ZONE  &&  tp.y < profiles[0].endY-DEAD_ZONE)
   {
-    if (tpt.x > profiles[0].startX+DEAD_ZONE  &&  tpt.x < profiles[0].endX-DEAD_ZONE)
+    if (tp.x > profiles[0].startX+DEAD_ZONE  &&  tp.x < profiles[0].endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      profileClick(0); break;
@@ -633,7 +631,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > profiles[1].startX+DEAD_ZONE  &&  tpt.x < profiles[1].endX-DEAD_ZONE)
+    else if (tp.x > profiles[1].startX+DEAD_ZONE  &&  tp.x < profiles[1].endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      profileClick(1); break;
@@ -642,7 +640,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > profiles[2].startX+DEAD_ZONE  &&  tpt.x < profiles[2].endX-DEAD_ZONE)
+    else if (tp.x > profiles[2].startX+DEAD_ZONE  &&  tp.x < profiles[2].endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      profileClick(2); break;
@@ -651,7 +649,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > profiles[3].startX+DEAD_ZONE  &&  tpt.x < profiles[3].endX-DEAD_ZONE)
+    else if (tp.x > profiles[3].startX+DEAD_ZONE  &&  tp.x < profiles[3].endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      profileClick(3); break;
@@ -660,7 +658,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > profiles[4].startX+DEAD_ZONE  &&  tpt.x < profiles[4].endX-DEAD_ZONE)
+    else if (tp.x > profiles[4].startX+DEAD_ZONE  &&  tp.x < profiles[4].endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      profileClick(4); break;
@@ -670,9 +668,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       }
     }
   }
-  else if (tpt.y > topTempControl.startY+DEAD_ZONE  &&  tpt.y < topTempControl.endY-DEAD_ZONE)
+  else if (tp.y > topTempControl.startY+DEAD_ZONE  &&  tp.y < topTempControl.endY-DEAD_ZONE)
   {
-    if (tpt.x > topTempControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < topTempControl.minusButton.endX-DEAD_ZONE)
+    if (tp.x > topTempControl.minusButton.startX+DEAD_ZONE  &&  tp.x < topTempControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      topMinusButtonClick(); break;
@@ -681,7 +679,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  topMinusButtonClick(); break;
       }
     }
-    else if (tpt.x > topTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < topTempControl.setControl.endX-DEAD_ZONE)
+    else if (tp.x > topTempControl.setControl.startX+DEAD_ZONE  &&  tp.x < topTempControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
         //case CLICK_EVENT :      break;
@@ -690,7 +688,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > topTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < topTempControl.plusButton.endX-DEAD_ZONE)
+    else if (tp.x > topTempControl.plusButton.startX+DEAD_ZONE  &&  tp.x < topTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      topPlusButtonClick(); break;
@@ -699,7 +697,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  topPlusButtonClick(); break;
       }
     }
-    else if (tpt.x > topTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < topTempControl.sensors.endX-DEAD_ZONE)
+    else if (tp.x > topTempControl.sensors.startX+DEAD_ZONE  &&  tp.x < topTempControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      topSensorClick(); break;
@@ -709,9 +707,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       }
     }
   }
-  else if (tpt.y > cookTimeControl.startY+DEAD_ZONE  &&  tpt.y < cookTimeControl.endY-DEAD_ZONE)
+  else if (tp.y > cookTimeControl.startY+DEAD_ZONE  &&  tp.y < cookTimeControl.endY-DEAD_ZONE)
   {
-    if (tpt.x > cookTimeControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.minusButton.endX-DEAD_ZONE)
+    if (tp.x > cookTimeControl.minusButton.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerMinusButtonClick(); break;
@@ -720,7 +718,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  centerMinusButtonClick(); break;
       }
     }
-    else if (tpt.x > cookTimeControl.setControl.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.setControl.endX-DEAD_ZONE)
+    else if (tp.x > cookTimeControl.setControl.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
         //case CLICK_EVENT :      break;
@@ -729,7 +727,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > cookTimeControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.plusButton.endX-DEAD_ZONE)
+    else if (tp.x > cookTimeControl.plusButton.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerPlusButtonClick(); break;
@@ -738,7 +736,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  centerPlusButtonClick(); break;
       }
     }
-    else if (tpt.x > cookTimeControl.sensors.startX+DEAD_ZONE  &&  tpt.x < cookTimeControl.sensors.endX-DEAD_ZONE)
+    else if (tp.x > cookTimeControl.sensors.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerSensorClick(); break;
@@ -748,9 +746,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
       }
     }
   }
-  else if (tpt.y > bottomTempControl.startY+DEAD_ZONE  &&  tpt.y < bottomTempControl.endY-DEAD_ZONE)
+  else if (tp.y > bottomTempControl.startY+DEAD_ZONE  &&  tp.y < bottomTempControl.endY-DEAD_ZONE)
   {
-    if (tpt.x > bottomTempControl.minusButton.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.minusButton.endX-DEAD_ZONE)
+    if (tp.x > bottomTempControl.minusButton.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      bottomMinusButtonClick(); break;
@@ -759,7 +757,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  bottomMinusButtonClick(); break;
       }
     }
-    else if (tpt.x > bottomTempControl.setControl.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.setControl.endX-DEAD_ZONE)
+    else if (tp.x > bottomTempControl.setControl.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
         //case CLICK_EVENT :      break;
@@ -768,7 +766,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tpt.x > bottomTempControl.plusButton.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.plusButton.endX-DEAD_ZONE)
+    else if (tp.x > bottomTempControl.plusButton.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      bottomPlusButtonClick(); break;
@@ -777,7 +775,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tpt, byte event)
         case LONG_HOLD_EVENT :  bottomPlusButtonClick(); break;
       }
     }
-    else if (tpt.x > bottomTempControl.sensors.startX+DEAD_ZONE  &&  tpt.x < bottomTempControl.sensors.endX-DEAD_ZONE)
+    else if (tp.x > bottomTempControl.sensors.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      bottomSensorClick(); break;
@@ -806,7 +804,7 @@ void computeTopPID (void)
   if (!isnan(topTempControl.sensors.value1))  topPID.input = topTempControl.sensors.value1;
   // else  To-do: Alert Sensor Error
   else topTempControl.sensors.backgroundColor = MAGENTA;
-  tpoPID.setpoint = topTempControl.setControl.value;
+  topPID.setpoint = topTempControl.setControl.value;
   topPID.Compute();
   topServo.writeMicroseconds(topPID.output);
 }
@@ -860,7 +858,7 @@ void setup()
   // Display init
   digitalWrite(A0, HIGH);
   pinMode(A0, OUTPUT);
-  myGLCD.InitLCD(TOUCH_ORIENTATION);
+  myGLCD.InitLCD(ORIENTATION);
   myGLCD.clrScr();
   myGLCD.setFont(SmallFont);
 
@@ -907,8 +905,6 @@ void setup()
   // Servos
   topServo.attach(TOP_SERVO_PIN);
   bottomServo.attach(BOTTOM_SERVO_PIN);
-  //pinMode(CONVEYOR_SERVO_PIN, OUTPUT);
-  //pinMode(BOTTOM_SERVO_PIN, OUTPUT);
   conveyorServo.attach(CONVEYOR_SERVO_PIN);
 }
 
@@ -934,8 +930,8 @@ void loop()
     conveyorServo.write(cookTimeControl.setControl.value);
 
   // Checking Touch
-  tp = getTouch();
-  TouchStatus=isPressed(tp);
+  avgTouchPoint = getAvgTouchPoint();
+  TouchStatus=isPressed(avgTouchPoint);
   lastTimeSinceTouchStarted = timeSinceTouchStarted;
   timeSinceTouchStarted=millis()-timeTouchStarted;
   if (hasTouchStatusChanged())
@@ -946,11 +942,11 @@ void loop()
     }
     else if (timeSinceTouchStarted > LONG_CLICK_TIME)
     {
-      findObjectFromCoordAndExecuteAction(last_tp, LONG_CLICK_EVENT);
+      findObjectFromCoordAndExecuteAction(last_avgTouchPoint, LONG_CLICK_EVENT);
     }
     else if (timeSinceTouchStarted > CLICK_TIME)
     {
-      findObjectFromCoordAndExecuteAction(last_tp, CLICK_EVENT);
+      findObjectFromCoordAndExecuteAction(last_avgTouchPoint, CLICK_EVENT);
     }
     lastTouchStatus=TouchStatus;
   }
@@ -962,13 +958,13 @@ void loop()
         draw();
       if (timeSinceTouchStarted > LONG_HOLD_TIME)
       {
-        findObjectFromCoordAndExecuteAction(tp, LONG_HOLD_EVENT);
+        findObjectFromCoordAndExecuteAction(avgTouchPoint, LONG_HOLD_EVENT);
       }
       else if (timeSinceTouchStarted > HOLD_TIME)
       {
-        findObjectFromCoordAndExecuteAction(tp, HOLD_EVENT);
+        findObjectFromCoordAndExecuteAction(avgTouchPoint, HOLD_EVENT);
       }
     }
   }
-  last_tp = tp;
+  last_avgTouchPoint = avgTouchPoint;
 }
