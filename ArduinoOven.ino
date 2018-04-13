@@ -812,6 +812,7 @@ void computeBottomPID (void)
 {
   if (!isnan(bottomTempControl.sensors.value1))  bottomPID.input = bottomTempControl.sensors.value1;
   // else  To-do: Alert Sensor Error
+  else topTempControl.sensors.backgroundColor = MAGENTA;
   bottomPID.setpoint = bottomTempControl.setControl.value;
   bottomPID.Compute();
   bottomServo.writeMicroseconds(bottomPID.output);
