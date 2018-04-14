@@ -1,111 +1,118 @@
 // Display
-#define  ORIENTATION  1
-#include <Adafruit_GFX.h>
-#include <UTFTGLUE.h>            //we are using UTFT display methods
-UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
-// Declare which fonts we will be using
-extern uint8_t SmallFont[];
+  #define  ORIENTATION  1
+  #include <Adafruit_GFX.h>
+  #include <UTFTGLUE.h>            //we are using UTFT display methods
+  UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
+  extern uint8_t SmallFont[]; // Declare which fonts we will be using
+  // Colors - RGB565 color picker -> https://ee-programming-notepad.blogspot.com.co/2016/10/16-bit-color-generator-picker.html
+    #define YELLOW      0xFFE0
+    #define WHITE       0xFFFF
+    #define BLACK       0x0000
+    #define BLUE        0x001F
+    #define RED         0xF800
+    #define GREEN       0x07E0
+    #define GREY        0x7BEF
+    #define CYAN        0x07FF
+    #define MAGENTA     0xF81F
+    #define PALEGREEN   0x9FD3
+  // Text sizes
+    #define SET_CONTROL_TEXT_SIZE   6
+    #define PROFILE_ID_TEXT_SIZE    4
+    #define PROFILE_PARAM_TEXT_SIZE 1
+    #define SENSOR_TEXT_SIZE        3
 
 // Thermocouples
-#include <max6675.h>
-#include <SPI.h>
-#define pinTopTempSensor1CS  23
-#define pinTopTempSensor2CS  25
-#define pinBottomTempSensor1CS  27
-#define pinBottomTempSensor2CS  29
+  #include <max6675.h>
+  #include <SPI.h>
+  #define PIN_CS_TOP_TEMP_SENSOR_1     23
+  #define PIN_CS_TOP_TEMP_SENSOR_2     25
+  #define PIN_CS_BOTTOM_TEMP_SENSOR_1  27
+  #define PIN_CS_BOTTOM_TEMP_SENSOR_2  29
 
 // Servos
-#include <Servo.h>
-Servo topServo;
-Servo bottomServo;
-Servo conveyorServo;
-// min/max PWM width in uS
-#define TOP_SERVO_MIN_WIDTH       780
-#define TOP_SERVO_MAX_WIDTH       1200
-#define BOTTOM_SERVO_MIN_WIDTH    750
-#define BOTTOM_SERVO_MAX_WIDTH    1500
-// pins
-#define TOP_SERVO_PIN       44
-#define CONVEYOR_SERVO_PIN  45
-#define BOTTOM_SERVO_PIN    46
+  #include <Servo.h>
+  Servo topServo;
+  Servo bottomServo;
+  Servo conveyorServo;
+  // pins
+    #define TOP_SERVO_PIN       44
+    #define CONVEYOR_SERVO_PIN  45
+    #define BOTTOM_SERVO_PIN    46
 
 // PID
-#include <PID_v1.h>
-#define PID_KP 10
-#define PID_KI 0.5
-#define PID_KD 5
+  #include <PID_v1.h>
+  #define PID_KP 10
+  #define PID_KI 0.5
+  #define PID_KD 5
+  // min/max PWM width in uS
+    #define TOP_PID_MIN_WIDTH       780
+    #define TOP_PID_MAX_WIDTH       1200
+    #define BOTTOM_PID_MIN_WIDTH    750
+    #define BOTTOM_PID_MAX_WIDTH    1500
+    #define CONVEYOR_PID_MIN_WIDTH  750
+    #define CONVEYOR_PID_MAX_WIDTH  2000
 
 // TouchScreen
-#include <TouchScreen.h>
-#define YP A2   //A3 for ILI9320
-#define YM 6    //9
-#define XM A1
-#define XP 7    //8
-TouchScreen myTouch(XP, YP, XM, YM, 300);
-#define NUM_OF_SAMPLES 10
-#define QUORUM 3
-#define CLICK_TIME      30              // minimum ms since touch started to trigger CLICK_EVENT
-#define HOLD_TIME       CLICK_TIME      // minimum ms since touch started to trigger HOLD_EVENT
-#define LONG_CLICK_TIME 600             // minimum ms since touch started to trigger LONG_CLICK_EVENT
-#define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms since touch started to trigger LONG_HOLD_EVENT
-#define DEAD_ZONE 2 // outest pixels of blocks where Touch-Events are disabled
-// Touch events
-#define CLICK_EVENT       0
-#define LONG_CLICK_EVENT  1
-#define HOLD_EVENT        2
-#define LONG_HOLD_EVENT   3
+  #include <TouchScreen.h>
+  #define YP A2   //A3 for ILI9320
+  #define YM 6    //9
+  #define XM A1
+  #define XP 7    //8
+  TouchScreen myTouch(XP, YP, XM, YM, 300);
+  #define NUM_OF_SAMPLES 10
+  #define QUORUM 3
+  #define DEAD_ZONE 2 // outest pixels of blocks where Touch-Events are disabled
+  // Touch events
+    #define CLICK_EVENT       0
+    #define LONG_CLICK_EVENT  1
+    #define HOLD_EVENT        2
+    #define LONG_HOLD_EVENT   3
+    // Time
+      #define CLICK_TIME      30              // minimum ms since touch started to trigger CLICK_EVENT
+      #define HOLD_TIME       CLICK_TIME      // minimum ms since touch started to trigger HOLD_EVENT
+      #define LONG_CLICK_TIME 600             // minimum ms since touch started to trigger LONG_CLICK_EVENT
+      #define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms since touch started to trigger LONG_HOLD_EVENT
 
 // States
-#define CONTROLLING_SETPOINTS   0
-#define CONTROLLING_TOP_PID     1
-#define CONTROLLING_BOTTOM_PID  2
-#define SHOWING_GRAPH           3
+  #define CONTROLLING_SETPOINTS     0
+  #define CONTROLLING_TOP_PID       1+CONTROLLING_SETPOINTS
+  #define CONTROLLING_BOTTOM_PID    1+CONTROLLING_TOP_PID
+  #define SHOWING_GRAPH             1+CONTROLLING_BOTTOM_PID
 
-#include <Thread.h>
-Thread updateSensorsThread = Thread();
-Thread drawSensorsThread = Thread();
-Thread topPIDThread = Thread();
-Thread bottomPIDThread = Thread();
-Thread drawGraphPointThread = Thread();
-
-// Colors - RGB565 color picker -> https://ee-programming-notepad.blogspot.com.co/2016/10/16-bit-color-generator-picker.html
-#define YELLOW      0xFFE0
-#define WHITE       0xFFFF
-#define BLACK       0x0000
-#define BLUE        0x001F
-#define RED         0xF800
-#define GREEN       0x07E0
-#define GREY        0x7BEF
-#define CYAN        0x07FF
-#define MAGENTA     0xF81F
-#define PALEGREEN   0x9FD3
-
-// Text sizes
-#define SET_CONTROL_TEXT_SIZE   6
-#define PROFILE_ID_TEXT_SIZE    4
-#define PROFILE_PARAM_TEXT_SIZE 1
-#define SENSOR_TEXT_SIZE        3
-
-void debug (String text) {
-  Serial.println(text);
-};
+// Threads
+  #include <Thread.h>
+  Thread updateSensorsThread    = Thread();
+  Thread drawSensorsThread      = Thread();
+  Thread topPIDThread           = Thread();
+  Thread bottomPIDThread        = Thread();
+  Thread conveyorPIDThread      = Thread();
+  Thread drawGraphPointThread   = Thread();
+  #define UPDATE_SENSORS_INTERVAL      1000
+  #define TOP_PID_INTERVAL             1000
+  #define BOTTOM_PID_INTERVAL          1000
+  #define CONVEYOR_PID_INTERVAL        1000
+  #define DRAW_SENSORS_INTERVAL        3000
+  #define DRAW_GRAPH_POINT_INTERVAL    1000
 
 // ###############################################################
 // #####################   GLOBAL VARIABLES   ####################
 // ###############################################################
 
 
-int dispX, dispY;
-byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
-byte activeProfile;
-byte state;
-bool isOutline = false;
+// Display
+  int dispX, dispY;
+  byte gridWidth, gridHeight, gridInternalWidth, gridInternalHeight;
+  bool isOutline = false;
 
-TSPoint avgTouchPoint, last_avgTouchPoint;
-bool TouchStatus;       // the current value read from isPressed()
-bool lastTouchStatus = false;
-long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
+// Touch
+  TSPoint avgTouchPoint, last_avgTouchPoint;
+  bool TouchStatus;       // the current value read from isPressed()
+  bool lastTouchStatus = false;
+  long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
 
+// Misc
+  byte activeProfile;
+  byte state;
 
 // ###############################################################
 // #########################   CLASSES   #########################
@@ -239,7 +246,7 @@ class Control : public Coordinates {
       setControl.value++;
       setControl.draw();
     }
-} cookTimeControl;
+} conveyorControl;
 
 class TempControl : public Control {
   public:
@@ -265,28 +272,28 @@ class TempControl : public Control {
     };
     void draw(void) {draw(setControl.value);};
 // TempControl(SensorCS)
-} topTempControl(pinTopTempSensor1CS, pinTopTempSensor2CS),
-  bottomTempControl(pinBottomTempSensor1CS, pinBottomTempSensor2CS);
+} topTempControl(PIN_CS_TOP_TEMP_SENSOR_1, PIN_CS_TOP_TEMP_SENSOR_2),
+  bottomTempControl(PIN_CS_BOTTOM_TEMP_SENSOR_1, PIN_CS_BOTTOM_TEMP_SENSOR_2);
 
 class Pid : public PID {
   public:
     double kp, ki, kd;
     double input, output, setpoint;
-    Pid(double _kp, double _ki, double _kd, byte P_ON_X, byte DIR):
+    Pid(double _kp, double _ki, double _kd, byte pOn, byte DIR):
       kp(_kp),
       ki(_ki),
       kd(_kd),
-      PID(&input, &output, &setpoint, _kp, _ki, _kd, P_ON_X, DIR)
+      PID(&input, &output, &setpoint, _kp, _ki, _kd, pOn, DIR)
     {};
 
     void updateTuning(void) {SetTunings(kp,ki,kd);};
 
-    void increaseKp (void) {kp++; updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (void) {kp--; updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.1; updateTuning(); cookTimeControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.1; updateTuning(); cookTimeControl.setControl.draw(ki);};
-    void increaseKd (void) {kd++; updateTuning(); bottomTempControl.setControl.draw(kd);};
-    void decreaseKd (void) {kd--; updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void increaseKp (void) {kp++;     updateTuning(); topTempControl.setControl.draw(kp);};
+    void decreaseKp (void) {kp--;     updateTuning(); topTempControl.setControl.draw(kp);};
+    void increaseKi (void) {ki+=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
 
 } topPID(PID_KP, PID_KI, PID_KD, P_ON_E, REVERSE),
   bottomPID(PID_KP, PID_KI, PID_KD, P_ON_E, DIRECT);
@@ -295,13 +302,13 @@ class Profile : public Block {
   public:
     int bottomTemp;
     int topTemp;
-    int cookTime;
+    int conveyorRPH;
     bool isActive = false;
     byte id;
 
-    Profile(int _topTemp, int _cookTime, int _bottomTemp):
+    Profile(int _topTemp, int _conveyorRPH, int _bottomTemp):
       topTemp(_topTemp),
-      cookTime(_cookTime),
+      conveyorRPH(_conveyorRPH),
       bottomTemp(_bottomTemp)
     {};
 
@@ -320,19 +327,19 @@ class Profile : public Block {
           myGLCD.print(String(id+1), startX+9 , startY+9);
         myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
           myGLCD.print(String(topTemp), startX+38, startY+6);
-          myGLCD.print(String(cookTime), startX+38, startY+6+14);
+          myGLCD.print(String(conveyorRPH), startX+38, startY+6+14);
           myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
     };
 
     void load(void)
     {
       topTempControl.setControl.value = topTemp;
-      cookTimeControl.setControl.value = cookTime;
+      conveyorControl.setControl.value = conveyorRPH;
       bottomTempControl.setControl.value = bottomTemp;
       isActive = true;
       draw();
       topTempControl.setControl.draw();
-      cookTimeControl.setControl.draw();
+      conveyorControl.setControl.draw();
       bottomTempControl.setControl.draw();
     };
 
@@ -345,19 +352,19 @@ class Profile : public Block {
     void save(void)
     {
       topTemp = topTempControl.setControl.value;
-      cookTime = cookTimeControl.setControl.value;
+      conveyorRPH = conveyorControl.setControl.value;
       bottomTemp = bottomTempControl.setControl.value;
       isActive = true;
       draw();
     };
 
 } profiles[] = {
-  // Profile(topTemp, cookTime, bottomTemp)
-  Profile(0,80,0),
-  Profile(210,220,230),
-  Profile(340,73,200),
-  Profile(410,420,430),
-  Profile(510,520,530),
+  // Profile(topTemp, conveyorRPH, bottomTemp)
+  Profile(0,2,0),
+  Profile(210,3,230),
+  Profile(340,5,200),
+  Profile(410,8,430),
+  Profile(510,73,530),
 };
 byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
@@ -452,7 +459,7 @@ void drawDivisions(void)
     myGLCD.drawLine(gridWidth*3-1+isOutline , dispY-1 , gridWidth*3-1+isOutline , 0);
     myGLCD.drawLine(gridWidth*4-1+isOutline , dispY-1 , gridWidth*4-1+isOutline , 0);
     myGLCD.drawLine(0 , topTempControl.startY-1 , dispX-1 , topTempControl.startY-1);
-    myGLCD.drawLine(0 , cookTimeControl.startY-1 , dispX-1 , cookTimeControl.startY-1);
+    myGLCD.drawLine(0 , conveyorControl.startY-1 , dispX-1 , conveyorControl.startY-1);
     myGLCD.drawLine(0 , bottomTempControl.startY-1 , dispX-1 , bottomTempControl.startY-1);
 }
 
@@ -463,21 +470,21 @@ void draw(void)
       drawDivisions();
       drawProfiles();
       topTempControl.draw();
-      cookTimeControl.draw();
+      conveyorControl.draw();
       bottomTempControl.draw();
     break;
     case CONTROLLING_TOP_PID:
       drawDivisions();
       drawProfiles();
       topTempControl.draw(topPID.kp);
-      cookTimeControl.draw(topPID.ki);
+      conveyorControl.draw(topPID.ki);
       bottomTempControl.draw(topPID.kd);
     break;
     case CONTROLLING_BOTTOM_PID:
       drawDivisions();
       drawProfiles();
       topTempControl.draw(bottomPID.kp);
-      cookTimeControl.draw(bottomPID.ki);
+      conveyorControl.draw(bottomPID.ki);
       bottomTempControl.draw(bottomPID.kd);
     break;
     case SHOWING_GRAPH:
@@ -544,7 +551,7 @@ void topMinusButtonClick (void) {
 }
 void centerMinusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   cookTimeControl.decreaseSetControl(); break;
+    case CONTROLLING_SETPOINTS:   conveyorControl.decreaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.decreaseKi(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKi(); break;
     case SHOWING_GRAPH:           controlSetpoint(); break;
@@ -568,7 +575,7 @@ void topPlusButtonClick (void) {
 }
 void centerPlusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   cookTimeControl.increaseSetControl(); break;
+    case CONTROLLING_SETPOINTS:   conveyorControl.increaseSetControl(); break;
     case CONTROLLING_TOP_PID:     topPID.increaseKi(); break;
     case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKi(); break;
     case SHOWING_GRAPH:           controlSetpoint(); break;
@@ -707,9 +714,9 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
       }
     }
   }
-  else if (tp.y > cookTimeControl.startY+DEAD_ZONE  &&  tp.y < cookTimeControl.endY-DEAD_ZONE)
+  else if (tp.y > conveyorControl.startY+DEAD_ZONE  &&  tp.y < conveyorControl.endY-DEAD_ZONE)
   {
-    if (tp.x > cookTimeControl.minusButton.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.minusButton.endX-DEAD_ZONE)
+    if (tp.x > conveyorControl.minusButton.startX+DEAD_ZONE  &&  tp.x < conveyorControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerMinusButtonClick(); break;
@@ -718,7 +725,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
         case LONG_HOLD_EVENT :  centerMinusButtonClick(); break;
       }
     }
-    else if (tp.x > cookTimeControl.setControl.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.setControl.endX-DEAD_ZONE)
+    else if (tp.x > conveyorControl.setControl.startX+DEAD_ZONE  &&  tp.x < conveyorControl.setControl.endX-DEAD_ZONE)
     {
       switch (event) {
         //case CLICK_EVENT :      break;
@@ -727,7 +734,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
         //case LONG_HOLD_EVENT :  break;
       }
     }
-    else if (tp.x > cookTimeControl.plusButton.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.plusButton.endX-DEAD_ZONE)
+    else if (tp.x > conveyorControl.plusButton.startX+DEAD_ZONE  &&  tp.x < conveyorControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerPlusButtonClick(); break;
@@ -736,7 +743,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
         case LONG_HOLD_EVENT :  centerPlusButtonClick(); break;
       }
     }
-    else if (tp.x > cookTimeControl.sensors.startX+DEAD_ZONE  &&  tp.x < cookTimeControl.sensors.endX-DEAD_ZONE)
+    else if (tp.x > conveyorControl.sensors.startX+DEAD_ZONE  &&  tp.x < conveyorControl.sensors.endX-DEAD_ZONE)
     {
       switch (event) {
         case CLICK_EVENT :      centerSensorClick(); break;
@@ -824,10 +831,10 @@ void drawGraphPoint()
   // scale so the graph shows 0-400 from bottom to top
   int topInput =        map(topPID.input,       0, 400, (dispY-1)/2, 0);
   int topSetpoint =     map(topPID.setpoint,    0, 400, (dispY-1)/2, 0);
-  int topOutput =       map(topPID.output,      TOP_SERVO_MIN_WIDTH, TOP_SERVO_MAX_WIDTH, (dispY-1)/2, 0);
+  int topOutput =       map(topPID.output,      TOP_PID_MIN_WIDTH, TOP_PID_MAX_WIDTH, (dispY-1)/2, 0);
   int bottomInput =     map(bottomPID.input,    0, 400, dispY-1, (dispY-1)/2);
   int bottomSetpoint =  map(bottomPID.setpoint, 0, 400, dispY-1, (dispY-1)/2);
-  int bottomOutput =    map(bottomPID.output,   BOTTOM_SERVO_MIN_WIDTH, BOTTOM_SERVO_MAX_WIDTH, dispY-1, (dispY-1)/2);
+  int bottomOutput =    map(bottomPID.output,   BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH, dispY-1, (dispY-1)/2);
 
   // clean column by drawing a BLACK line from top to bottom
   myGLCD.setColor(BLACK);       myGLCD.drawLine(column,0,column,dispY-1);
@@ -857,56 +864,56 @@ void setup()
   Serial.println("ArduinoOven");
 
   // Display init
-  digitalWrite(A0, HIGH);
-  pinMode(A0, OUTPUT);
-  myGLCD.InitLCD(ORIENTATION);
-  myGLCD.clrScr();
-  myGLCD.setFont(SmallFont);
+    digitalWrite(A0, HIGH);
+    pinMode(A0, OUTPUT);
+    myGLCD.InitLCD(ORIENTATION);
+    myGLCD.clrScr();
+    myGLCD.setFont(SmallFont);
 
   // Set coordinates
-  dispX = myGLCD.getDisplayXSize();
-  dispY = myGLCD.getDisplayYSize();
-  gridWidth = dispX / 5;
-  gridHeight = gridWidth;
-  gridInternalWidth = gridWidth - 2;
-  gridInternalHeight = gridHeight - 2;
-  if ( dispX % 5 >= 1 )  { isOutline = true; } // If there's at least 1 extra pixel, draw outline
-  bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
-  cookTimeControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
-  topTempControl.setCoordinates( isOutline, cookTimeControl.startY - gridHeight );
-  calculateProfilesProperties();
+    dispX = myGLCD.getDisplayXSize();
+    dispY = myGLCD.getDisplayYSize();
+    gridWidth = dispX / 5;
+    gridHeight = gridWidth;
+    gridInternalWidth = gridWidth - 2;
+    gridInternalHeight = gridHeight - 2;
+    if ( dispX % 5 >= 1 )  { isOutline = true; } // If there's at least 1 extra pixel, draw outline
+    bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
+    conveyorControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
+    topTempControl.setCoordinates( isOutline, conveyorControl.startY - gridHeight );
+    calculateProfilesProperties();
 
   loadProfile(0);
   delay(500);   // wait for MAX chip to stabilize
 
   // Threads
-  updateSensorsThread.onRun(updateSensors);
-  updateSensorsThread.setInterval(1000);
-  topPIDThread.onRun(computeTopPID);
-  topPIDThread.setInterval(1000);
-  bottomPIDThread.onRun(computeBottomPID);
-  bottomPIDThread.setInterval(1000);
-  drawSensorsThread.onRun(drawSensors);
-  drawSensorsThread.setInterval(3000);
-  drawGraphPointThread.onRun(drawGraphPoint);
-  drawGraphPointThread.setInterval(200);
+    updateSensorsThread.onRun(updateSensors);
+    updateSensorsThread.setInterval(UPDATE_SENSORS_INTERVAL);
+    topPIDThread.onRun(computeTopPID);
+    topPIDThread.setInterval(TOP_PID_INTERVAL);
+    bottomPIDThread.onRun(computeBottomPID);
+    bottomPIDThread.setInterval(BOTTOM_PID_INTERVAL);
+    drawSensorsThread.onRun(drawSensors);
+    drawSensorsThread.setInterval(DRAW_SENSORS_INTERVAL);
+    drawGraphPointThread.onRun(drawGraphPoint);
+    drawGraphPointThread.setInterval(DRAW_GRAPH_POINT_INTERVAL);
 
   // PIDs
-  topPID.input = topTempControl.sensors.value1;
-  topPID.setpoint = topTempControl.setControl.value;
-  topPID.SetSampleTime(1000);
-  topPID.SetOutputLimits(TOP_SERVO_MIN_WIDTH, TOP_SERVO_MAX_WIDTH);
-  topPID.SetMode(AUTOMATIC);
-  bottomPID.input = bottomTempControl.sensors.value1;
-  bottomPID.setpoint = bottomTempControl.setControl.value;
-  bottomPID.SetSampleTime(1000);
-  bottomPID.SetOutputLimits(BOTTOM_SERVO_MIN_WIDTH, BOTTOM_SERVO_MAX_WIDTH);
-  bottomPID.SetMode(AUTOMATIC);
+    topPID.input = topTempControl.sensors.value1;
+    topPID.setpoint = topTempControl.setControl.value;
+    topPID.SetSampleTime(TOP_PID_INTERVAL);
+    topPID.SetOutputLimits(TOP_PID_MIN_WIDTH, TOP_PID_MAX_WIDTH);
+    topPID.SetMode(AUTOMATIC);
+    bottomPID.input = bottomTempControl.sensors.value1;
+    bottomPID.setpoint = bottomTempControl.setControl.value;
+    bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
+    bottomPID.SetOutputLimits(BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH);
+    bottomPID.SetMode(AUTOMATIC);
 
   // Servos
-  topServo.attach(TOP_SERVO_PIN);
-  bottomServo.attach(BOTTOM_SERVO_PIN);
-  conveyorServo.attach(CONVEYOR_SERVO_PIN);
+    topServo.attach(TOP_SERVO_PIN);
+    bottomServo.attach(BOTTOM_SERVO_PIN);
+    conveyorServo.attach(CONVEYOR_SERVO_PIN);
 }
 
 
