@@ -133,6 +133,13 @@ class Block : public Coordinates {
   public:
     int backgroundColor = BLACK;
     int foregroundColor = WHITE;
+    int highlightbackgroundColor = GREEN;
+    int highlightforegroundColor = BLACK;
+    int lowlightbackgroundColor = BLACK;
+    int lowlightforegroundColor = WHITE;
+
+    void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
+    void lowlight(void) { backgroundColor = lowlightbackgroundColor; foregroundColor = lowlightforegroundColor; };
 };
 
 class MinusButton : public Block {
@@ -143,7 +150,12 @@ class MinusButton : public Block {
       myGLCD.setColor(foregroundColor);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
-    MinusButton() { backgroundColor = BLUE; foregroundColor = BLACK; }
+    MinusButton() {
+      backgroundColor = BLUE;
+      foregroundColor = BLACK;
+      lowlightbackgroundColor = BLUE;
+      lowlightforegroundColor = BLACK;
+    }
 };
 
 class SetControl : public Block {
@@ -178,7 +190,12 @@ class PlusButton : public Block {
         myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
-    PlusButton() { backgroundColor = RED; foregroundColor = BLACK; }
+    PlusButton() {
+      backgroundColor = RED;
+      foregroundColor = BLACK;
+      lowlightbackgroundColor = RED;
+      lowlightforegroundColor = BLACK;
+    }
 };
 
 class Sensors : public Block {
@@ -191,9 +208,6 @@ class Sensors : public Block {
       Sensor1(pinSensor1CS),
       Sensor2(pinSensor2CS)
     {};
-
-    void highlight(void) { backgroundColor = GREEN; foregroundColor = BLACK; };
-    void lowlight(void) { backgroundColor = BLACK; foregroundColor = WHITE; };
 
     void draw(void) {
       myGLCD.setColor(backgroundColor);
@@ -314,10 +328,8 @@ class Profile : public Block {
 
     void draw (void)
     {
-      if (isActive)
-        { backgroundColor = GREEN; foregroundColor = BLACK; }
-      else
-        { backgroundColor = BLACK; foregroundColor = WHITE; }
+      if (isActive) highlight();
+      else lowlight();
 
       myGLCD.setColor(backgroundColor);
         myGLCD.fillRect(startX, startY, endX, endY);
@@ -522,7 +534,7 @@ void loadProfile(byte id)
   profiles[activeProfile].unload();
   profiles[id].load();
   activeProfile = id;
-  controlSetpoint();
+  if (state != CONTROLLING_SETPOINTS) controlSetpoint();
 }
 
 void saveProfile(byte id)
@@ -883,6 +895,7 @@ void setup()
     topTempControl.setCoordinates( isOutline, conveyorControl.startY - gridHeight );
     calculateProfilesProperties();
 
+  controlSetpoint();
   loadProfile(0);
   delay(500);   // wait for MAX chip to stabilize
 
