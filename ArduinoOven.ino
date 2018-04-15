@@ -39,6 +39,10 @@
     #define CONVEYOR_SERVO_PIN  45
     #define BOTTOM_SERVO_PIN    46
 
+// Encoder
+  #define ENCODER_PIN             21
+  #define STEPS_PER_REVOLUTION    200
+
 // PID
   #include <PID_v1.h>
   #define PID_KP 10
@@ -77,7 +81,8 @@
   #define CONTROLLING_SETPOINTS     0
   #define CONTROLLING_TOP_PID       1+CONTROLLING_SETPOINTS
   #define CONTROLLING_BOTTOM_PID    1+CONTROLLING_TOP_PID
-  #define SHOWING_GRAPH             1+CONTROLLING_BOTTOM_PID
+  #define CONTROLLING_CONVEYOR_PID  1+CONTROLLING_BOTTOM_PID
+  #define SHOWING_GRAPH             1+CONTROLLING_CONVEYOR_PID
 
 // Threads
   #include <Thread.h>
@@ -109,6 +114,10 @@
   bool TouchStatus;       // the current value read from isPressed()
   bool lastTouchStatus = false;
   long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
+
+// Encoder
+  long  last_encoderLastStepTime;
+  volatile long encoderStepsCounter, encoderStepTime; // volatile to use in interruptions
 
 // Misc
   byte activeProfile;
@@ -230,12 +239,25 @@ class Sensors : public Block {
     };
 };
 
+class Encoder : public Block {
+  public:
+    int value;
+
+    void draw(void) {
+      myGLCD.setColor(backgroundColor);
+        myGLCD.fillRect(startX, startY, endX, endY);
+      myGLCD.setTextColor(foregroundColor, backgroundColor);
+        myGLCD.setTextSize(SENSOR_TEXT_SIZE);
+          myGLCD.print(String(value), startX+7, startY+20);
+    };
+};
+
 class Control : public Coordinates {
   public:
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    Block sensors;
+    Encoder sensors;
     virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -250,6 +272,7 @@ class Control : public Coordinates {
       minusButton.draw();
       setControl.draw(setControlNumber);
       plusButton.draw();
+      sensors.draw();
     };
     virtual void draw(void) {draw(setControl.value);};
     void decreaseSetControl(void) {
@@ -310,7 +333,8 @@ class Pid : public PID {
     void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
 
 } topPID(PID_KP, PID_KI, PID_KD, P_ON_E, REVERSE),
-  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_E, DIRECT);
+  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_E, DIRECT),
+  conveyorPID(PID_KP, PID_KI, 0.0, P_ON_E, DIRECT);
 
 class Profile : public Block {
   public:
@@ -372,11 +396,11 @@ class Profile : public Block {
 
 } profiles[] = {
   // Profile(topTemp, conveyorRPH, bottomTemp)
-  Profile(0,2,0),
-  Profile(210,3,230),
-  Profile(340,5,200),
-  Profile(410,8,430),
-  Profile(510,73,530),
+  Profile(0,0,0),
+  Profile(210,100,230),
+  Profile(340,180,200),
+  Profile(410,100,430),
+  Profile(510,100,530),
 };
 byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
@@ -499,6 +523,13 @@ void draw(void)
       conveyorControl.draw(bottomPID.ki);
       bottomTempControl.draw(bottomPID.kd);
     break;
+    case CONTROLLING_CONVEYOR_PID:
+      drawDivisions();
+      drawProfiles();
+      topTempControl.draw(conveyorPID.kp);
+      conveyorControl.draw(conveyorPID.ki);
+      bottomTempControl.draw(conveyorPID.kd);
+    break;
     case SHOWING_GRAPH:
       //clean screen
       myGLCD.setColor(BLACK);      myGLCD.fillRect(0,0, dispX-1,dispY-1);
@@ -510,17 +541,27 @@ void controlSetpoint (void) {
   state = CONTROLLING_SETPOINTS;
   bottomTempControl.sensors.lowlight();
   topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
   draw();
 }
 void controlBottomPID (void) {
   state = CONTROLLING_BOTTOM_PID;
   bottomTempControl.sensors.highlight();
   topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
   draw();
 }
 void controlTopPID (void) {
   state = CONTROLLING_TOP_PID;
   topTempControl.sensors.highlight();
+  bottomTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  draw();
+}
+void controlConveyorPID (void) {
+  state = CONTROLLING_CONVEYOR_PID;
+  conveyorControl.sensors.highlight();
+  topTempControl.sensors.lowlight();
   bottomTempControl.sensors.lowlight();
   draw();
 }
@@ -555,72 +596,83 @@ void profileLongClick (byte id=0) {
 
 void topMinusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   topTempControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.decreaseKp(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKp(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     topTempControl.decreaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.decreaseKp(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.decreaseKp(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.decreaseKp(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void centerMinusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   conveyorControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.decreaseKi(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKi(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     conveyorControl.decreaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.decreaseKi(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.decreaseKi(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.decreaseKi(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void bottomMinusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   bottomTempControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.decreaseKd(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.decreaseKd(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     bottomTempControl.decreaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.decreaseKd(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.decreaseKd(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.decreaseKd(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void topPlusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   topTempControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.increaseKp(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKp(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     topTempControl.increaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.increaseKp(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.increaseKp(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.increaseKp(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void centerPlusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   conveyorControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.increaseKi(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKi(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     conveyorControl.increaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.increaseKi(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.increaseKi(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.increaseKi(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void bottomPlusButtonClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   bottomTempControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:     topPID.increaseKd(); break;
-    case CONTROLLING_BOTTOM_PID:  bottomPID.increaseKd(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     bottomTempControl.increaseSetControl(); break;
+    case CONTROLLING_TOP_PID:       topPID.increaseKd(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.increaseKd(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.increaseKd(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void topSensorClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   controlTopPID(); break;
-    case CONTROLLING_TOP_PID:     controlSetpoint(); break;
-    case CONTROLLING_BOTTOM_PID:  controlTopPID(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     controlTopPID(); break;
+    case CONTROLLING_TOP_PID:       controlSetpoint(); break;
+    case CONTROLLING_CONVEYOR_PID:  controlTopPID(); break;
+    case CONTROLLING_BOTTOM_PID:    controlTopPID(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void centerSensorClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   showGraph(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     controlConveyorPID(); break;
+    case CONTROLLING_TOP_PID:       controlConveyorPID(); break;
+    case CONTROLLING_CONVEYOR_PID:  controlSetpoint(); break;
+    case CONTROLLING_BOTTOM_PID:    controlConveyorPID(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 void bottomSensorClick (void) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:   controlBottomPID(); break;
-    case CONTROLLING_TOP_PID:     controlBottomPID(); break;
-    case CONTROLLING_BOTTOM_PID:  controlSetpoint(); break;
-    case SHOWING_GRAPH:           controlSetpoint(); break;
+    case CONTROLLING_SETPOINTS:     controlBottomPID(); break;
+    case CONTROLLING_TOP_PID:       controlBottomPID(); break;
+    case CONTROLLING_CONVEYOR_PID:  controlBottomPID(); break;
+    case CONTROLLING_BOTTOM_PID:    controlSetpoint(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
 
@@ -815,6 +867,7 @@ void updateSensors (void)
 void drawSensors (void)
 {
   topTempControl.sensors.draw();
+  conveyorControl.sensors.draw();
   bottomTempControl.sensors.draw();
 }
 
@@ -835,6 +888,25 @@ void computeBottomPID (void)
   bottomPID.setpoint = bottomTempControl.setControl.value;
   bottomPID.Compute();
   bottomServo.writeMicroseconds(bottomPID.output);
+}
+void computeConveyorPID (void)
+{
+  noInterrupts();
+    long encoderLastStepTime = encoderStepTime;
+    long encoderSteps_counted = encoderStepsCounter;
+    encoderStepsCounter=0;
+  interrupts();
+  if (encoderSteps_counted == 0)  encoderLastStepTime = millis(); // If no encoder steps
+  long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
+  double stepsPerMs = conveyorControl.setControl.value * STEPS_PER_REVOLUTION / 3600000.0; // RPH to Steps per milisecond
+  double encoderSteps_goal = stepsPerMs * encoderStepsCounter_duration;
+  conveyorPID.input += encoderSteps_counted - encoderSteps_goal;
+  conveyorPID.setpoint = 0;
+  conveyorPID.Compute();
+  showPIDs();
+  conveyorServo.writeMicroseconds(conveyorPID.output);
+  last_encoderLastStepTime = encoderLastStepTime;
+  conveyorControl.sensors.value = encoderSteps_counted * 3600000.0 / STEPS_PER_REVOLUTION / encoderStepsCounter_duration;
 }
 
 void drawGraphPoint()
@@ -861,6 +933,15 @@ void drawGraphPoint()
 
   column++;
   if (column >= 320) column = 0;
+}
+
+void increaseEncoderCounter (void)
+{
+  if (millis()-encoderStepTime > 5)   // filter rebounds
+  {
+    encoderStepsCounter++;
+    encoderStepTime = millis();
+  }
 }
 
 
@@ -906,6 +987,8 @@ void setup()
     topPIDThread.setInterval(TOP_PID_INTERVAL);
     bottomPIDThread.onRun(computeBottomPID);
     bottomPIDThread.setInterval(BOTTOM_PID_INTERVAL);
+    conveyorPIDThread.onRun(computeConveyorPID);
+    conveyorPIDThread.setInterval(CONVEYOR_PID_INTERVAL);
     drawSensorsThread.onRun(drawSensors);
     drawSensorsThread.setInterval(DRAW_SENSORS_INTERVAL);
     drawGraphPointThread.onRun(drawGraphPoint);
@@ -922,11 +1005,19 @@ void setup()
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.SetOutputLimits(BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH);
     bottomPID.SetMode(AUTOMATIC);
+    conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
+    conveyorPID.SetOutputLimits(CONVEYOR_PID_MIN_WIDTH, CONVEYOR_PID_MAX_WIDTH);
+    conveyorPID.SetMode(AUTOMATIC);
 
   // Servos
     topServo.attach(TOP_SERVO_PIN);
     bottomServo.attach(BOTTOM_SERVO_PIN);
     conveyorServo.attach(CONVEYOR_SERVO_PIN);
+
+  // Encoder
+    pinMode(ENCODER_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(ENCODER_PIN), increaseEncoderCounter, CHANGE);
+    encoderStepTime=millis();
 }
 
 
@@ -938,17 +1029,15 @@ void setup()
 void loop()
 {
   // Threads
-  if (updateSensorsThread.shouldRun())      {updateSensorsThread.run(); showPIDs();}
+  if (updateSensorsThread.shouldRun())      updateSensorsThread.run();
   if (topPIDThread.shouldRun())             topPIDThread.run();
   if (bottomPIDThread.shouldRun())          bottomPIDThread.run();
+  if (conveyorPIDThread.shouldRun())        conveyorPIDThread.run();
   if (state == SHOWING_GRAPH) {
     if (drawGraphPointThread.shouldRun())   drawGraphPointThread.run();
   } else {
     if (drawSensorsThread.shouldRun())      drawSensorsThread.run();
   }
-
-  if (conveyorServo.read() != cookTimeControl.setControl.value)
-    conveyorServo.write(cookTimeControl.setControl.value);
 
   // Checking Touch
   avgTouchPoint = getAvgTouchPoint();
