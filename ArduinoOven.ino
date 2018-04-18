@@ -1024,18 +1024,32 @@ void drawSensors (void)
 
 void computeTopPID (void)
 {
-  if (!isnan(topTempControl.sensors.value1))  topPID.input = topTempControl.sensors.value1;
-  // else  To-do: Alert Sensor Error
+  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
+  double valueSum;
+  if (!isnan(topTempControl.sensors.value1))
+    { valueSum += topTempControl.sensors.value1; validReads++; }
+  if (!isnan(topTempControl.sensors.value2))
+    { valueSum += topTempControl.sensors.value2; validReads++; }
+  if (validReads > 0)   topPID.input = valueSum / validReads;
   else topTempControl.sensors.backgroundColor = MAGENTA;
+  // else  To-do: Alert Sensor Error
+
   topPID.setpoint = topTempControl.setControl.value;
   topPID.Compute();
   topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
 {
-  if (!isnan(bottomTempControl.sensors.value1))  bottomPID.input = bottomTempControl.sensors.value1;
+  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
+  double valueSum;
+  if (!isnan(bottomTempControl.sensors.value1))
+    { valueSum += bottomTempControl.sensors.value1; validReads++; }
+  if (!isnan(bottomTempControl.sensors.value2))
+    { valueSum += bottomTempControl.sensors.value2; validReads++; }
+  if (validReads > 0)   bottomPID.input = valueSum / validReads;
+  else bottomTempControl.sensors.backgroundColor = MAGENTA;
   // else  To-do: Alert Sensor Error
-  else topTempControl.sensors.backgroundColor = MAGENTA;
+
   bottomPID.setpoint = bottomTempControl.setControl.value;
   bottomPID.Compute();
   bottomServo.writeMicroseconds(bottomPID.output);
