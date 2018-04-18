@@ -98,6 +98,22 @@
   #define CONVEYOR_PID_INTERVAL        1000
   #define DRAW_SENSORS_INTERVAL        3000
   #define DRAW_GRAPH_POINT_INTERVAL    1000
+// EEPROM
+  #include <EEPROM.h>
+  struct PidEEPROM { byte kp;  byte ki;  byte kd; };
+  struct ServoEEPROM { int minWidth;  int maxWidth; };
+  struct ProfileEEPROM { int topTemp;  int conveyorRPH;  int bottomTemp; };
+  // Addresses
+    // PIDs
+      #define TOP_PID_ADDRESS         0
+      #define CONVEYOR_PID_ADDRESS    TOP_PID_ADDRESS         +sizeof(PidEEPROM)
+      #define BOTTOM_PID_ADDRESS      CONVEYOR_PID_ADDRESS    +sizeof(PidEEPROM)
+    // Servos
+      #define TOP_SERVO_ADDRESS       BOTTOM_PID_ADDRESS      +sizeof(PidEEPROM)
+      #define CONVEYOR_SERVO_ADDRESS  TOP_SERVO_ADDRESS       +sizeof(ServoEEPROM)
+      #define BOTTOM_SERVO_ADDRESS    CONVEYOR_SERVO_ADDRESS  +sizeof(ServoEEPROM)
+    // Profiles
+      #define PROFILE_ADDRESS         BOTTOM_SERVO_ADDRESS    +sizeof(ServoEEPROM)
 
 // ###############################################################
 // #####################   GLOBAL VARIABLES   ####################
@@ -316,10 +332,12 @@ class Pid : public PID {
   public:
     double kp, ki, kd;
     double input, output, setpoint;
-    Pid(double _kp, double _ki, double _kd, byte pOn, byte DIR):
+    byte EEPROMaddress;
+    Pid(double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
       kp(_kp),
       ki(_ki),
       kd(_kd),
+      EEPROMaddress(address),
       PID(&input, &output, &setpoint, _kp, _ki, _kd, pOn, DIR)
     {};
 
@@ -332,9 +350,25 @@ class Pid : public PID {
     void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
 
-} topPID(PID_KP, PID_KI, PID_KD, P_ON_E, REVERSE),
-  bottomPID(PID_KP, PID_KI, PID_KD, P_ON_E, DIRECT),
-  conveyorPID(PID_KP, PID_KI, 0.0, P_ON_E, DIRECT);
+    void saveTuningParameters (void) {
+      PidEEPROM pid;
+      pid.kp = kp;
+      pid.ki = ki*10;
+      pid.kd = kd;
+      EEPROM.put(EEPROMaddress, pid);
+    }
+    void loadTuningParameters (void) {
+      PidEEPROM pid;
+      EEPROM.get(EEPROMaddress, pid);
+      kp = pid.kp;
+      ki = pid.ki/10.0;
+      kd = pid.kd;
+      updateTuning();
+    }
+
+} topPID     (TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS),
+  bottomPID  (BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, DIRECT , BOTTOM_PID_ADDRESS),
+  conveyorPID(CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
 
 class Profile : public Block {
   public:
@@ -391,6 +425,19 @@ class Profile : public Block {
       conveyorRPH = conveyorControl.setControl.value;
       bottomTemp = bottomTempControl.setControl.value;
       isActive = true;
+      saveToEEPROM();
+      draw();
+    };
+
+    void saveToEEPROM(void)
+    {
+      ProfileEEPROM profile;
+      profile.topTemp = topTemp;
+      profile.conveyorRPH = conveyorRPH;
+      profile.bottomTemp = bottomTemp;
+      byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * id;
+      EEPROM.put(address, profile);
+      isActive = true;
       draw();
     };
 
@@ -414,6 +461,12 @@ void calculateProfilesProperties (void)
 {
   for (byte i=0; i<profilesSize; i++)
   {
+    ProfileEEPROM profile;
+    byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
+    EEPROM.get(address, profile);
+    profiles[i].topTemp = profile.topTemp;
+    profiles[i].conveyorRPH = profile.conveyorRPH;
+    profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
@@ -666,12 +719,39 @@ void centerSensorClick (void) {
     case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
+void centerSensorLongClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:     controlConveyorPID(); break;
+    case CONTROLLING_TOP_PID:       controlConveyorPID(); break;
+    case CONTROLLING_CONVEYOR_PID:  conveyorPID.saveTuningParameters(); break;
+    case CONTROLLING_BOTTOM_PID:    controlConveyorPID(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
+  }
+}
 void bottomSensorClick (void) {
   switch (state) {
     case CONTROLLING_SETPOINTS:     controlBottomPID(); break;
     case CONTROLLING_TOP_PID:       controlBottomPID(); break;
     case CONTROLLING_CONVEYOR_PID:  controlBottomPID(); break;
     case CONTROLLING_BOTTOM_PID:    controlSetpoint(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
+  }
+}
+void bottomSensorLongClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:     controlBottomPID(); break;
+    case CONTROLLING_TOP_PID:       controlBottomPID(); break;
+    case CONTROLLING_CONVEYOR_PID:  controlBottomPID(); break;
+    case CONTROLLING_BOTTOM_PID:    bottomPID.saveTuningParameters(); break;
+    case SHOWING_GRAPH:             controlSetpoint(); break;
+  }
+}
+void topSensorLongClick (void) {
+  switch (state) {
+    case CONTROLLING_SETPOINTS:     controlTopPID(); break;
+    case CONTROLLING_TOP_PID:       topPID.saveTuningParameters(); break;
+    case CONTROLLING_CONVEYOR_PID:  controlTopPID(); break;
+    case CONTROLLING_BOTTOM_PID:    controlTopPID(); break;
     case SHOWING_GRAPH:             controlSetpoint(); break;
   }
 }
@@ -772,7 +852,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      topSensorClick(); break;
-        //case LONG_CLICK_EVENT : break;
+        case LONG_CLICK_EVENT : topSensorLongClick(); break;
         //case HOLD_EVENT :       break;
         //case LONG_HOLD_EVENT :  break;
       }
@@ -811,7 +891,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      centerSensorClick(); break;
-        //case LONG_CLICK_EVENT : break;
+        case LONG_CLICK_EVENT : centerSensorLongClick(); break;
         //case HOLD_EVENT :       break;
         //case LONG_HOLD_EVENT :  break;
       }
@@ -850,7 +930,7 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     {
       switch (event) {
         case CLICK_EVENT :      bottomSensorClick(); break;
-        //case LONG_CLICK_EVENT : break;
+        case LONG_CLICK_EVENT : bottomSensorLongClick(); break;
         //case HOLD_EVENT :       break;
         //case LONG_HOLD_EVENT :  break;
       }
@@ -995,16 +1075,19 @@ void setup()
     drawGraphPointThread.setInterval(DRAW_GRAPH_POINT_INTERVAL);
 
   // PIDs
+    topPID.loadTuningParameters();
     topPID.input = topTempControl.sensors.value1;
     topPID.setpoint = topTempControl.setControl.value;
     topPID.SetSampleTime(TOP_PID_INTERVAL);
     topPID.SetOutputLimits(TOP_PID_MIN_WIDTH, TOP_PID_MAX_WIDTH);
     topPID.SetMode(AUTOMATIC);
+    bottomPID.loadTuningParameters();
     bottomPID.input = bottomTempControl.sensors.value1;
     bottomPID.setpoint = bottomTempControl.setControl.value;
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.SetOutputLimits(BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH);
     bottomPID.SetMode(AUTOMATIC);
+    conveyorPID.loadTuningParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetOutputLimits(CONVEYOR_PID_MIN_WIDTH, CONVEYOR_PID_MAX_WIDTH);
     conveyorPID.SetMode(AUTOMATIC);
