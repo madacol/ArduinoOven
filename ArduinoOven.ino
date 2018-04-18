@@ -46,9 +46,18 @@
 
 // PID
   #include <PID_v1.h>
-  #define PID_KP 10
-  #define PID_KI 0.5
-  #define PID_KD 5
+  // Top
+    #define TOP_PID_KP          10
+    #define TOP_PID_KI          1
+    #define TOP_PID_KD          5
+  // Conveyor
+    #define CONVEYOR_PID_KP     5
+    #define CONVEYOR_PID_KI     1
+    #define CONVEYOR_PID_KD     0
+  // Bottom
+    #define BOTTOM_PID_KP       10
+    #define BOTTOM_PID_KI       1
+    #define BOTTOM_PID_KD       5
   // min/max PWM width in uS
     #define TOP_PID_MIN_WIDTH       780
     #define TOP_PID_MAX_WIDTH       1200
@@ -99,6 +108,7 @@
   #define CONVEYOR_PID_INTERVAL        1000
   #define DRAW_SENSORS_INTERVAL        3000
   #define DRAW_GRAPH_POINT_INTERVAL    300
+
 // EEPROM
   #include <EEPROM.h>
   struct PidEEPROM { byte kp;  byte ki;  byte kd; };
@@ -449,8 +459,8 @@ class Profile : public Block {
 } profiles[] = {
   // Profile(topTemp, conveyorRPH, bottomTemp)
   Profile(0,0,0),
-  Profile(210,100,230),
-  Profile(340,180,200),
+  Profile(340,-150,200),
+  Profile(340,150,200),
   Profile(410,100,430),
   Profile(510,100,530),
 };
@@ -1115,7 +1125,6 @@ void setup()
 
   controlSetpoint();
   loadProfile(0);
-  delay(500);   // wait for MAX chip to stabilize
 
   // Threads
     updateSensorsThread.onRun(updateSensors);
@@ -1133,14 +1142,10 @@ void setup()
 
   // PIDs
     topPID.loadTuningParameters();
-    topPID.input = topTempControl.sensors.value1;
-    topPID.setpoint = topTempControl.setControl.value;
     topPID.SetSampleTime(TOP_PID_INTERVAL);
     topPID.SetOutputLimits(TOP_PID_MIN_WIDTH, TOP_PID_MAX_WIDTH);
     topPID.SetMode(AUTOMATIC);
     bottomPID.loadTuningParameters();
-    bottomPID.input = bottomTempControl.sensors.value1;
-    bottomPID.setpoint = bottomTempControl.setControl.value;
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.SetOutputLimits(BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH);
     bottomPID.SetMode(AUTOMATIC);
