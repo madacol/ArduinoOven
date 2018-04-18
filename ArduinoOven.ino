@@ -126,6 +126,12 @@
     // Profiles
       #define PROFILE_ADDRESS         BOTTOM_SERVO_ADDRESS    +sizeof(ServoEEPROM)
 
+// Relays
+    #define SPARK_PIN               34
+    #define VALVE_PIN               36
+    #define SPARK_IGNITION_TIME     3000 // ms
+    //#define VALVE_TIME              200
+
 // ###############################################################
 // #####################   GLOBAL VARIABLES   ####################
 // ###############################################################
@@ -1160,6 +1166,14 @@ void setup()
     pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
     pinMode(CONVEYOR_L298N_DIR1_PIN , OUTPUT);
     pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
+
+  // Relays
+    pinMode(VALVE_PIN, OUTPUT);
+    digitalWrite(VALVE_PIN, LOW);
+    pinMode(SPARK_PIN, OUTPUT);
+    digitalWrite(SPARK_PIN, LOW);
+    delay(SPARK_IGNITION_TIME);     // Turn on Sparks for SPARK_IGNITION_TIME miliseconds
+    digitalWrite(SPARK_PIN, HIGH);
 
   // Encoder
     pinMode(ENCODER_PIN, INPUT);
