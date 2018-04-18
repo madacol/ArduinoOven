@@ -1,7 +1,7 @@
 // Display
   #define  ORIENTATION  1
   #include <Adafruit_GFX.h>
-  #include <UTFTGLUE.h>            //we are using UTFT display methods
+  #include <UTFTGLUE.h>            // Modified file MCUFRIEND_kbv.h: Enabled #define SUPPORT_8347D
   UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
   extern uint8_t SmallFont[]; // Declare which fonts we will be using
   // Colors - RGB565 color picker -> https://ee-programming-notepad.blogspot.com.co/2016/10/16-bit-color-generator-picker.html
@@ -30,14 +30,15 @@
   #define PIN_CS_BOTTOM_TEMP_SENSOR_2  29
 
 // Servos
-  #include <Servo.h>
+  #include <Servo.h>  // Modified file ServoTimers.h: disabled timer5 to use analogWrite() on pins 44,45,46. Now timer1 is used.
   Servo topServo;
   Servo bottomServo;
-  Servo conveyorServo;
   // pins
-    #define TOP_SERVO_PIN       44
-    #define CONVEYOR_SERVO_PIN  45
-    #define BOTTOM_SERVO_PIN    46
+    #define TOP_SERVO_PIN               44
+    #define BOTTOM_SERVO_PIN            46
+    #define CONVEYOR_L298N_PWM          45    // ENB
+    #define CONVEYOR_L298N_DIR1_PIN     41    // IN3
+    #define CONVEYOR_L298N_DIR2_PIN     43    // IN4
 
 // Encoder
   #define ENCODER_PIN             21
@@ -53,8 +54,8 @@
     #define TOP_PID_MAX_WIDTH       1200
     #define BOTTOM_PID_MIN_WIDTH    750
     #define BOTTOM_PID_MAX_WIDTH    1500
-    #define CONVEYOR_PID_MIN_WIDTH  750
-    #define CONVEYOR_PID_MAX_WIDTH  2000
+    #define CONVEYOR_PID_MIN_WIDTH  0
+    #define CONVEYOR_PID_MAX_WIDTH  255
 
 // TouchScreen
   #include <TouchScreen.h>
@@ -976,15 +977,23 @@ void computeConveyorPID (void)
     long encoderSteps_counted = encoderStepsCounter;
     encoderStepsCounter=0;
   interrupts();
+  static int oldSetcontrolValue;
+  if (conveyorControl.setControl.value != oldSetcontrolValue)
+  {
+    if (conveyorControl.setControl.value < 0)
+      digitalWrite(CONVEYOR_L298N_DIR1_PIN, HIGH), digitalWrite(CONVEYOR_L298N_DIR2_PIN, LOW);
+    else
+      digitalWrite(CONVEYOR_L298N_DIR1_PIN, LOW), digitalWrite(CONVEYOR_L298N_DIR2_PIN, HIGH);
+    oldSetcontrolValue = conveyorControl.setControl.value;
+  }
   if (encoderSteps_counted == 0)  encoderLastStepTime = millis(); // If no encoder steps
   long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
   double stepsPerMs = conveyorControl.setControl.value * STEPS_PER_REVOLUTION / 3600000.0; // RPH to Steps per milisecond
   double encoderSteps_goal = stepsPerMs * encoderStepsCounter_duration;
-  conveyorPID.input += encoderSteps_counted - encoderSteps_goal;
-  conveyorPID.setpoint = 0;
+  conveyorPID.input += encoderSteps_counted;
+  conveyorPID.setpoint += encoderSteps_goal;
   conveyorPID.Compute();
-  showPIDs();
-  conveyorServo.writeMicroseconds(conveyorPID.output);
+  analogWrite(CONVEYOR_L298N_PWM, conveyorPID.output);
   last_encoderLastStepTime = encoderLastStepTime;
   conveyorControl.sensors.value = encoderSteps_counted * 3600000.0 / STEPS_PER_REVOLUTION / encoderStepsCounter_duration;
 }
@@ -1095,7 +1104,9 @@ void setup()
   // Servos
     topServo.attach(TOP_SERVO_PIN);
     bottomServo.attach(BOTTOM_SERVO_PIN);
-    conveyorServo.attach(CONVEYOR_SERVO_PIN);
+    pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
+    pinMode(CONVEYOR_L298N_DIR1_PIN , OUTPUT);
+    pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
 
   // Encoder
     pinMode(ENCODER_PIN, INPUT);
