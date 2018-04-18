@@ -674,7 +674,7 @@ void saveProfile(byte id)
   profiles[activeProfile].unload();
   profiles[id].save();
   activeProfile = id;
-  controlSetpoint();
+  if (state != CONTROLLING_SETPOINTS) controlSetpoint();
 }
 
 void profileClick (byte id=0) {
