@@ -388,7 +388,7 @@ class Pid : public PID {
     }
 
 } topPID     (TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS),
-  bottomPID  (BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, DIRECT , BOTTOM_PID_ADDRESS),
+  bottomPID  (BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, REVERSE, BOTTOM_PID_ADDRESS),
   conveyorPID(CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
 
 class Profile : public Block {
@@ -1074,8 +1074,8 @@ void computeConveyorPID (void)
   long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
   double stepsPerMs = conveyorControl.setControl.value * STEPS_PER_REVOLUTION / 3600000.0; // RPH to Steps per milisecond
   double encoderSteps_goal = stepsPerMs * encoderStepsCounter_duration;
-  conveyorPID.input += encoderSteps_counted;
-  conveyorPID.setpoint += encoderSteps_goal;
+  conveyorPID.input += encoderSteps_counted - encoderSteps_goal;
+  conveyorPID.setpoint = 0;
   conveyorPID.Compute();
   analogWrite(CONVEYOR_L298N_PWM, conveyorPID.output);
   last_encoderLastStepTime = encoderLastStepTime;
@@ -1175,8 +1175,8 @@ void setup()
     conveyorPID.SetMode(AUTOMATIC);
 
   // Servos
-    topServo.attach(TOP_SERVO_PIN);
-    bottomServo.attach(BOTTOM_SERVO_PIN);
+    topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(TOP_PID_MAX_WIDTH);
+    bottomServo.attach(BOTTOM_SERVO_PIN);   bottomServo.writeMicroseconds(BOTTOM_PID_MAX_WIDTH);
     pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
     pinMode(CONVEYOR_L298N_DIR1_PIN , OUTPUT);
     pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
