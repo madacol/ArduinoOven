@@ -183,16 +183,26 @@ class Block : public Coordinates {
     int highlightforegroundColor = BLACK;
     int lowlightbackgroundColor = BLACK;
     int lowlightforegroundColor = WHITE;
+    int old_backgroundColor;
 
     void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
     void lowlight(void) { backgroundColor = lowlightbackgroundColor; foregroundColor = lowlightforegroundColor; };
+    void drawBackground (void) {
+      myGLCD.setColor(backgroundColor);
+        myGLCD.fillRect(startX, startY, endX, endY);
+    }
+    void drawBackgroundIfHasChanged (void) {
+      if (old_backgroundColor != backgroundColor) {
+        drawBackground();
+        old_backgroundColor = backgroundColor;
+      }
+    }
 };
 
 class MinusButton : public Block {
   public:
     void draw(void) {
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, endX, endY);
+      drawBackground();
       myGLCD.setColor(foregroundColor);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
@@ -218,8 +228,7 @@ class SetControl : public Block {
       char buffer[6];
       if (number == int(number))  number_str=String(int(number));
       else                        number_str=dtostrf(number,1,1, buffer);
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, endX, endY);
+      drawBackgroundIfHasChanged();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
           myGLCD.print(number_str, startX+12, startY+11);
@@ -230,8 +239,7 @@ class SetControl : public Block {
 class PlusButton : public Block {
   public:
     void draw(void) {
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, startX+62, endY);
+      drawBackground();
       myGLCD.setColor(foregroundColor);
         myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
@@ -256,8 +264,7 @@ class Sensors : public Block {
     {};
 
     void draw(void) {
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, endX, endY);
+      drawBackgroundIfHasChanged();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
           myGLCD.print(String(int(value1)), startX+7, startY+7);
@@ -281,8 +288,7 @@ class Encoder : public Block {
     int value;
 
     void draw(void) {
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, endX, endY);
+      drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
           myGLCD.print(String(value), startX+7, startY+20);
@@ -409,10 +415,7 @@ class Profile : public Block {
     {
       if (isActive) highlight();
       else lowlight();
-
-      myGLCD.setColor(backgroundColor);
-        myGLCD.fillRect(startX, startY, endX, endY);
-
+      drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
           myGLCD.print(String(id+1), startX+9 , startY+9);
@@ -464,11 +467,11 @@ class Profile : public Block {
 
 } profiles[] = {
   // Profile(topTemp, conveyorRPH, bottomTemp)
-  Profile(0,0,0),
+  Profile(0,100,0),
   Profile(340,-150,200),
   Profile(340,150,200),
-  Profile(410,100,430),
-  Profile(510,100,530),
+  Profile(5,5,5),
+  Profile(-5,-5,-5),
 };
 byte profilesSize = sizeof(profiles) / sizeof(Profile);
 
