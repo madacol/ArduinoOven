@@ -83,7 +83,7 @@
     #define LONG_HOLD_EVENT   3
     // Time
       #define CLICK_TIME      30              // minimum ms since touch started to trigger CLICK_EVENT
-      #define HOLD_TIME       50              // minimum ms since touch started to trigger HOLD_EVENT
+      #define HOLD_TIME       70              // minimum ms since touch started to trigger HOLD_EVENT
       #define LONG_CLICK_TIME 600             // minimum ms since touch started to trigger LONG_CLICK_EVENT
       #define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms since touch started to trigger LONG_HOLD_EVENT
 
@@ -484,7 +484,6 @@ class Profile : public Block {
       byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * id;
       EEPROM.put(address, profile);
       isActive = true;
-      draw();
     };
 
 } profiles[] = {
@@ -628,7 +627,7 @@ void drawDivisions(void)
     myGLCD.drawLine(0 , bottomTempControl.startY-1 , dispX-1 , bottomTempControl.startY-1);
 }
 
-void draw(void)
+void drawEverything(void)
 {
   switch (state) {
     case CONTROLLING_SETPOINTS:
@@ -692,28 +691,28 @@ void controlSetpoints (void) {
   bottomTempControl.sensors.lowlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
-  draw();
+  drawEverything();
 }
 void controlBottomPID (void) {
   state = CONTROLLING_BOTTOM_PID;
   bottomTempControl.sensors.highlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
-  draw();
+  drawEverything();
 }
 void controlTopPID (void) {
   state = CONTROLLING_TOP_PID;
   topTempControl.sensors.highlight();
   bottomTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
-  draw();
+  drawEverything();
 }
 void controlConveyorPID (void) {
   state = CONTROLLING_CONVEYOR_PID;
   conveyorControl.sensors.highlight();
   topTempControl.sensors.lowlight();
   bottomTempControl.sensors.lowlight();
-  draw();
+  drawEverything();
 }
 void showTopPIDGraph (void) {
   inputGraph      = &topPID.input;
@@ -722,7 +721,7 @@ void showTopPIDGraph (void) {
   minWidthGraph   = TOP_PID_MIN_WIDTH;
   maxWidthGraph   = TOP_PID_MAX_WIDTH;
   state           = SHOWING_GRAPH;
-  draw();
+  drawEverything();
 }
 void showBottomPIDGraph (void) {
   inputGraph      = &bottomPID.input;
@@ -731,7 +730,7 @@ void showBottomPIDGraph (void) {
   minWidthGraph   = BOTTOM_PID_MIN_WIDTH;
   maxWidthGraph   = BOTTOM_PID_MAX_WIDTH;
   state           = SHOWING_GRAPH;
-  draw();
+  drawEverything();
 }
 void showConveyorPIDGraph (void) {
   inputGraph      = &conveyorPID.input;
@@ -740,28 +739,28 @@ void showConveyorPIDGraph (void) {
   minWidthGraph   = CONVEYOR_PID_MIN_WIDTH;
   maxWidthGraph   = CONVEYOR_PID_MAX_WIDTH;
   state           = SHOWING_GRAPH;
-  draw();
+  drawEverything();
 }
 void controlTopOutputLimits (void) {
   state = CONTROLLING_TOP_OUTPUT_LIMITS;
   topTempControl.setControl.highlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.lowlight();
-  draw();
+  drawEverything();
 }
 void controlConveyorOutputLimits (void) {
   state = CONTROLLING_CONVEYOR_OUTPUT_LIMITS;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.highlight();
   bottomTempControl.setControl.lowlight();
-  draw();
+  drawEverything();
 }
 void controlBottomOutputLimits (void) {
   state = CONTROLLING_BOTTOM_OUTPUT_LIMITS;
   topTempControl.setControl.highlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.lowlight();
-  draw();
+  drawEverything();
 }
 
 void loadProfile(byte id)
