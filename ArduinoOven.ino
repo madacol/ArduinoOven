@@ -760,9 +760,9 @@ void controlConveyorOutputLimits (void) {
 }
 void controlBottomOutputLimits (void) {
   state = CONTROLLING_BOTTOM_OUTPUT_LIMITS;
-  topTempControl.setControl.highlight();
+  topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
-  bottomTempControl.setControl.lowlight();
+  bottomTempControl.setControl.highlight();
   drawEverything();
 }
 
