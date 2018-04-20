@@ -234,7 +234,7 @@ class SetControl : public Block {
       char buffer[6];
       if (number == int(number))  number_str=String(int(number));
       else                        number_str=dtostrf(number,1,1, buffer);
-      drawBackgroundIfHasChanged();
+      drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
           myGLCD.print(number_str, startX+12, startY+11);
@@ -1161,14 +1161,14 @@ void updateSensors (void)
 
 void drawSensors (void)
 {
-  //static byte turn;
-  //switch (turn) {
+  static byte turn;
+  switch (turn) {
      topTempControl.sensors.draw();
      conveyorControl.sensors.draw();
      bottomTempControl.sensors.draw();
-  /*}
-  turn++;
-  if (turn > BOTTOM_TURN) turn = TOP_TURN;*/
+  }
+  if (turn == BOTTOM_TURN)  turn = TOP_TURN;
+  else                      turn++;
 }
 
 void computeTopPID (void)
