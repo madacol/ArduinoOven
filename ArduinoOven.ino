@@ -541,14 +541,12 @@ void calculateProfilesProperties (void)
 {
   for (byte i=0; i<profilesSize; i++)
   {
-    /*
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
     profiles[i].topTemp = profile.topTemp;
     profiles[i].conveyorRPH = profile.conveyorRPH;
     profiles[i].bottomTemp = profile.bottomTemp;
-    */
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
@@ -1318,15 +1316,15 @@ void setup()
     drawGraphPointThread.setInterval(DRAW_GRAPH_POINT_INTERVAL);
 
   // PIDs
-    //topPID.loadParameters();
+    topPID.loadParameters();
     topPID.SetSampleTime(TOP_PID_INTERVAL);
     topPID.SetOutputLimits(TOP_PID_MIN_WIDTH, TOP_PID_MAX_WIDTH);
     topPID.SetMode(AUTOMATIC);
-    //bottomPID.loadParameters();
+    bottomPID.loadParameters();
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.SetOutputLimits(BOTTOM_PID_MIN_WIDTH, BOTTOM_PID_MAX_WIDTH);
     bottomPID.SetMode(AUTOMATIC);
-    //conveyorPID.loadParameters();
+    conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetOutputLimits(CONVEYOR_PID_MIN_WIDTH, CONVEYOR_PID_MAX_WIDTH);
     conveyorPID.SetMode(AUTOMATIC);
