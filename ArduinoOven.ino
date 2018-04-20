@@ -128,7 +128,7 @@
       #define CONVEYOR_PID_ADDRESS    TOP_PID_ADDRESS         +sizeof(PidEEPROM)
       #define BOTTOM_PID_ADDRESS      CONVEYOR_PID_ADDRESS    +sizeof(PidEEPROM)
     // Profiles
-      #define PROFILE_ADDRESS         BOTTOM_PID_ADDRESS      +sizeof(ServoEEPROM)
+      #define PROFILE_ADDRESS         BOTTOM_PID_ADDRESS      +sizeof(PidEEPROM)
 
 // Relays
     #define SPARK_PIN               34
