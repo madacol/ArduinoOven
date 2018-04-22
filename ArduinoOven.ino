@@ -1200,9 +1200,9 @@ void drawSensors (void)
 {
   static byte turn;
   switch (turn) {
-     topTempControl.sensors.draw();
-     conveyorControl.sensors.draw();
-     bottomTempControl.sensors.draw();
+    case TOP_TURN:         topTempControl.sensors.draw(); break;
+    case CONVEYOR_TURN:    conveyorControl.sensors.draw(); break;
+    case BOTTOM_TURN:      bottomTempControl.sensors.draw(); break;
   }
   if (turn == BOTTOM_TURN)  turn = TOP_TURN;
   else                      turn++;
