@@ -406,12 +406,12 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      kp = pid.kp;
-      ki = pid.ki/10.0;
-      kd = pid.kd;
-      minOutput   = pid.minOutput;
-      startOutput = pid.startOutput;
-      maxOutput   = pid.maxOutput;
+      if (pid.kp != 255) kp = pid.kp;
+      if (pid.ki != 255) ki = pid.ki/10.0;
+      if (pid.kd != 255) kd = pid.kd;
+      if (pid.minOutput != -1)    minOutput   = pid.minOutput;
+      if (pid.startOutput != -1)  startOutput = pid.startOutput;
+      if (pid.maxOutput != -1)    maxOutput   = pid.maxOutput;
       updateTuning(); updateOutputLimits();
     }
 
@@ -543,9 +543,9 @@ void calculateProfilesProperties (void)
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
-    profiles[i].topTemp = profile.topTemp;
-    profiles[i].conveyorRPH = profile.conveyorRPH;
-    profiles[i].bottomTemp = profile.bottomTemp;
+    if (profile.topTemp != -1)      profiles[i].topTemp = profile.topTemp;
+    if (profile.conveyorRPH != -1)  profiles[i].conveyorRPH = profile.conveyorRPH;
+    if (profile.bottomTemp != -1)   profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
