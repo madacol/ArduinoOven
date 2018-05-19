@@ -78,9 +78,9 @@
   #define DEAD_ZONE 2 // outest pixels of blocks where Touch-Events are disabled
   // Touch events
     #define CLICK_EVENT       0
-    #define LONG_CLICK_EVENT  1
-    #define HOLD_EVENT        2
-    #define LONG_HOLD_EVENT   3
+    #define LONG_CLICK_EVENT  1+CLICK_EVENT
+    #define HOLD_EVENT        1+LONG_CLICK_EVENT
+    #define LONG_HOLD_EVENT   1+HOLD_EVENT
     // Time
       #define CLICK_TIME      30              // minimum ms since touch started to trigger CLICK_EVENT
       #define HOLD_TIME       70              // minimum ms since touch started to trigger HOLD_EVENT
@@ -125,10 +125,10 @@
   // Addresses
     // PIDs
       #define TOP_PID_ADDRESS         0
-      #define CONVEYOR_PID_ADDRESS    TOP_PID_ADDRESS         +sizeof(PidEEPROM)
-      #define BOTTOM_PID_ADDRESS      CONVEYOR_PID_ADDRESS    +sizeof(PidEEPROM)
+      #define CONVEYOR_PID_ADDRESS    sizeof(PidEEPROM)+TOP_PID_ADDRESS
+      #define BOTTOM_PID_ADDRESS      sizeof(PidEEPROM)+CONVEYOR_PID_ADDRESS
     // Profiles
-      #define PROFILE_ADDRESS         BOTTOM_PID_ADDRESS      +sizeof(PidEEPROM)
+      #define PROFILE_ADDRESS         sizeof(PidEEPROM)+BOTTOM_PID_ADDRESS
 
 // Relays
     #define SPARK_PIN               34
