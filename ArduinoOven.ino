@@ -1270,6 +1270,7 @@ void computeConveyorPID (void)
       digitalWrite(CONVEYOR_L298N_DIR1_PIN, HIGH), digitalWrite(CONVEYOR_L298N_DIR2_PIN, LOW);
     else
       digitalWrite(CONVEYOR_L298N_DIR1_PIN, LOW), digitalWrite(CONVEYOR_L298N_DIR2_PIN, HIGH);
+
     oldSetcontrolValue = conveyorControl.setControl.value;
   }
   if (encoderSteps_counted == 0)  encoderLastStepTime = millis(); // If no encoder steps
