@@ -34,11 +34,13 @@
   Servo topServo;
   Servo bottomServo;
   // pins
-    #define TOP_SERVO_PIN               44
+    #define TOP_SERVO_PIN               45
     #define BOTTOM_SERVO_PIN            46
-    #define CONVEYOR_L298N_PWM          45    // ENB
-    #define CONVEYOR_L298N_DIR1_PIN     41    // IN3
-    #define CONVEYOR_L298N_DIR2_PIN     43    // IN4
+
+// Motor Speed Control with L298N
+  #define CONVEYOR_L298N_PWM          44 // ENB
+  #define CONVEYOR_L298N_DIR1_PIN     42 // IN3
+  #define CONVEYOR_L298N_DIR2_PIN     40 // IN4
 
 // Encoder
   #define ENCODER_PIN             21
@@ -51,8 +53,8 @@
     #define TOP_PID_KI          1
     #define TOP_PID_KD          5
   // Conveyor
-    #define CONVEYOR_PID_KP     5
-    #define CONVEYOR_PID_KI     1
+    #define CONVEYOR_PID_KP     3
+    #define CONVEYOR_PID_KI     0.2
     #define CONVEYOR_PID_KD     0
   // Bottom
     #define BOTTOM_PID_KP       10
@@ -131,8 +133,8 @@
       #define PROFILE_ADDRESS         sizeof(PidEEPROM)+BOTTOM_PID_ADDRESS
 
 // Relays
-    #define SPARK_PIN               34
-    #define VALVE_PIN               36
+    #define SPARK_PIN               35
+    #define VALVE_PIN               37
     #define SPARK_IGNITION_TIME     3000 // ms
     //#define VALVE_TIME              200
 
