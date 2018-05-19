@@ -68,6 +68,14 @@
     #define CONVEYOR_PID_MIN_WIDTH  0
     #define CONVEYOR_PID_MAX_WIDTH  255
 
+// Graphs
+  #define TOP_TEMP_MIN_RANGE      250
+  #define TOP_TEMP_MAX_RANGE      450
+  #define BOTTOM_TEMP_MIN_RANGE   150
+  #define BOTTOM_TEMP_MAX_RANGE   350
+  #define CONVEYOR_MIN_RANGE      -200
+  #define CONVEYOR_MAX_RANGE      200
+
 // TouchScreen
   #include <TouchScreen.h>
   #define YP A2   //A3 for ILI9320
@@ -162,7 +170,7 @@
 
 // Graph
   double *inputGraph, *setpointGraph, *outputGraph;
-  int minWidthGraph, maxWidthGraph;
+  int minInputSetpointGraph, maxInputSetpointGraph, minOutputGraph, maxOutputGraph;
 
 // Misc
   byte activeProfile;
@@ -723,8 +731,10 @@ void showTopPIDGraph (void) {
   inputGraph      = &topPID.input;
   setpointGraph   = &topPID.setpoint;
   outputGraph     = &topPID.output;
-  minWidthGraph   = TOP_PID_MIN_WIDTH;
-  maxWidthGraph   = TOP_PID_MAX_WIDTH;
+  minInputSetpointGraph = TOP_TEMP_MIN_RANGE;
+  maxInputSetpointGraph = TOP_TEMP_MAX_RANGE;
+  minOutputGraph   = topPID.minOutput;
+  maxOutputGraph   = topPID.maxOutput;
   state           = SHOWING_GRAPH;
   drawEverything();
 }
@@ -732,8 +742,10 @@ void showBottomPIDGraph (void) {
   inputGraph      = &bottomPID.input;
   setpointGraph   = &bottomPID.setpoint;
   outputGraph     = &bottomPID.output;
-  minWidthGraph   = BOTTOM_PID_MIN_WIDTH;
-  maxWidthGraph   = BOTTOM_PID_MAX_WIDTH;
+  minInputSetpointGraph = BOTTOM_TEMP_MIN_RANGE;
+  maxInputSetpointGraph = BOTTOM_TEMP_MAX_RANGE;
+  minOutputGraph   = bottomPID.minOutput;
+  maxOutputGraph   = bottomPID.maxOutput;
   state           = SHOWING_GRAPH;
   drawEverything();
 }
@@ -741,8 +753,10 @@ void showConveyorPIDGraph (void) {
   inputGraph      = &conveyorPID.input;
   setpointGraph   = &conveyorPID.setpoint;
   outputGraph     = &conveyorPID.output;
-  minWidthGraph   = CONVEYOR_PID_MIN_WIDTH;
-  maxWidthGraph   = CONVEYOR_PID_MAX_WIDTH;
+  minInputSetpointGraph = CONVEYOR_MIN_RANGE;
+  maxInputSetpointGraph = CONVEYOR_MAX_RANGE;
+  minOutputGraph   = conveyorPID.minOutput;
+  maxOutputGraph   = conveyorPID.maxOutput;
   state           = SHOWING_GRAPH;
   drawEverything();
 }
@@ -1282,9 +1296,9 @@ void drawGraphPoint()
 {
   static int column;
   // scale so the graph shows 0-400 from bottom to top
-  int input =     map(*inputGraph,    0, 400, dispY-1, 0);
-  int setpoint =  map(*setpointGraph, 0, 400, dispY-1, 0);
-  int output =    map(*outputGraph,   minWidthGraph, maxWidthGraph, dispY-1, 0);
+  int input    = map(*inputGraph,    minInputSetpointGraph, maxInputSetpointGraph, dispY-1, 0);
+  int setpoint = map(*setpointGraph, minInputSetpointGraph, maxInputSetpointGraph, dispY-1, 0);
+  int output   = map(*outputGraph,   minOutputGraph,        maxOutputGraph,        dispY-1, 0);
 
   // clean column by drawing a BLACK line from top to bottom
   myGLCD.setColor(BLACK);       myGLCD.drawLine(column,0,column,dispY-1);
