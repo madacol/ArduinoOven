@@ -46,6 +46,9 @@
   #define ENCODER_PIN             21
   #define STEPS_PER_REVOLUTION    200
 
+// Oven Specific Parameters
+  #define STEPS_TO_CROSS_OVEN     STEPS_PER_REVOLUTION * (7+1/3)
+
 // PID
   #include <PID_v1.h>
   // Top
@@ -73,8 +76,8 @@
   #define TOP_TEMP_MAX_RANGE      450
   #define BOTTOM_TEMP_MIN_RANGE   150
   #define BOTTOM_TEMP_MAX_RANGE   350
-  #define CONVEYOR_MIN_RANGE      -200
-  #define CONVEYOR_MAX_RANGE      200
+  #define CONVEYOR_MIN_RANGE      -50
+  #define CONVEYOR_MAX_RANGE      50
 
 // TouchScreen
   #include <TouchScreen.h>
@@ -131,7 +134,7 @@
   #include <EEPROM.h>
   struct PidEEPROM { byte kp;  byte ki;  byte kd; int minOutput;  int startOutput;  int maxOutput; };
   struct ServoEEPROM { int minWidth;  int maxWidth; };
-  struct ProfileEEPROM { int topTemp;  int conveyorRPH;  int bottomTemp; };
+  struct ProfileEEPROM { int topTemp;  int conveyorCookTime;  int bottomTemp; };
   // Addresses
     // PIDs
       #define TOP_PID_ADDRESS         0
@@ -175,6 +178,17 @@
 // Misc
   byte activeProfile;
   byte state;
+
+
+// ###############################################################
+// ################ GLOBAL FUNCTIONS FOR CLASSES #################
+// ###############################################################
+
+String stringifyDouble (double number) {
+  char buffer[6];
+  if (number == int(number))  return String(int(number));
+  else                        return dtostrf(number,1,1, buffer);
+}
 
 // ###############################################################
 // #########################   CLASSES   #########################
@@ -232,7 +246,7 @@ class MinusButton : public Block {
 
 class SetControl : public Block {
   public:
-    int value;
+    double value;
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -240,14 +254,17 @@ class SetControl : public Block {
       endY = startY+gridInternalHeight;
     };
     void draw(double number) {
-      String number_str;
-      char buffer[6];
-      if (number == int(number))  number_str=String(int(number));
-      else                        number_str=dtostrf(number,1,1, buffer);
       drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
-        myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
+        String number_str = stringifyDouble(number);
+        if (number_str.length() <= 3) {
+          myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
           myGLCD.print(number_str, startX+12, startY+11);
+        }
+        else {
+          myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE-1);
+          myGLCD.print(number_str, startX+6, startY+14);
+        }
     };
     void draw(void) {draw(value);};
 };
@@ -301,13 +318,20 @@ class Sensors : public Block {
 
 class Encoder : public Block {
   public:
-    int value;
+    double value;
 
     void draw(void) {
       drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
-        myGLCD.setTextSize(SENSOR_TEXT_SIZE);
-          myGLCD.print(String(value), startX+7, startY+20);
+        String value_str = stringifyDouble(value);
+        if (value_str.length() <= 3) {
+          myGLCD.setTextSize(SENSOR_TEXT_SIZE);
+          myGLCD.print(value_str, startX+7, startY+20);
+        }
+        else {
+          myGLCD.setTextSize(SENSOR_TEXT_SIZE-1);
+          myGLCD.print(value_str, startX+3, startY+23);
+        }
     };
 };
 
@@ -334,18 +358,19 @@ class Control : public Coordinates {
       sensors.draw();
     };
     virtual void draw(void) {draw(setControl.value);};
-    void decreaseSetControl(void) {
-      setControl.value--;
+    virtual void decreaseSetControl(void) {
+      setControl.value-=0.1;
       setControl.draw();
     }
-    void increaseSetControl(void) {
-      setControl.value++;
+    virtual void increaseSetControl(void) {
+      setControl.value+=0.1;
       setControl.draw();
     }
 } conveyorControl;
 
 class TempControl : public Control {
   public:
+    SetControl setControl;
     Sensors sensors;
     TempControl(byte pinSensor1CS,byte pinSensor2CS):
       sensors(pinSensor1CS, pinSensor2CS)
@@ -367,6 +392,14 @@ class TempControl : public Control {
       sensors.draw();
     };
     void draw(void) {draw(setControl.value);};
+    void decreaseSetControl(void) {
+      setControl.value--;
+      setControl.draw();
+    }
+    void increaseSetControl(void) {
+      setControl.value++;
+      setControl.draw();
+    }
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1, PIN_CS_TOP_TEMP_SENSOR_2),
   bottomTempControl(PIN_CS_BOTTOM_TEMP_SENSOR_1, PIN_CS_BOTTOM_TEMP_SENSOR_2);
@@ -433,13 +466,13 @@ class Profile : public Block {
   public:
     int bottomTemp;
     int topTemp;
-    int conveyorRPH;
+    double conveyorCookTime;
     bool isActive = false;
     byte id;
 
-    Profile(int _topTemp, int _conveyorRPH, int _bottomTemp):
+    Profile(int _topTemp, int _conveyorCookTime, int _bottomTemp):
       topTemp(_topTemp),
-      conveyorRPH(_conveyorRPH),
+      conveyorCookTime(_conveyorCookTime),
       bottomTemp(_bottomTemp)
     {};
 
@@ -453,14 +486,14 @@ class Profile : public Block {
           myGLCD.print(String(id+1), startX+9 , startY+9);
         myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
           myGLCD.print(String(topTemp), startX+38, startY+6);
-          myGLCD.print(String(conveyorRPH), startX+38, startY+6+14);
+          myGLCD.print(stringifyDouble(conveyorCookTime), startX+38, startY+6+14);
           myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
     };
 
     void load(void)
     {
       topTempControl.setControl.value = topTemp;
-      conveyorControl.setControl.value = conveyorRPH;
+      conveyorControl.setControl.value = conveyorCookTime;
       bottomTempControl.setControl.value = bottomTemp;
       isActive = true;
       draw();
@@ -478,7 +511,7 @@ class Profile : public Block {
     void save(void)
     {
       topTemp = topTempControl.setControl.value;
-      conveyorRPH = conveyorControl.setControl.value;
+      conveyorCookTime = conveyorControl.setControl.value;
       bottomTemp = bottomTempControl.setControl.value;
       isActive = true;
       saveToEEPROM();
@@ -489,7 +522,7 @@ class Profile : public Block {
     {
       ProfileEEPROM profile;
       profile.topTemp = topTemp;
-      profile.conveyorRPH = conveyorRPH;
+      profile.conveyorCookTime = int( conveyorCookTime * 10 );
       profile.bottomTemp = bottomTemp;
       byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * id;
       EEPROM.put(address, profile);
@@ -497,7 +530,7 @@ class Profile : public Block {
     };
 
 } profiles[] = {
-  // Profile(topTemp, conveyorRPH, bottomTemp)
+  // Profile(topTemp, conveyorCookTime, bottomTemp)
   Profile(0,100,0),
   Profile(340,-150,200),
   Profile(340,150,200),
@@ -531,7 +564,7 @@ class Profiles : public Block {
   }
 
 } profiles2(
-  // Profile(topTemp, conveyorRPH, bottomTemp)
+  // Profile(topTemp, conveyorCookTime, bottomTemp)
   Profile(110,120,130),
   Profile(210,220,230),
   Profile(310,320,330),
@@ -553,9 +586,9 @@ void calculateProfilesProperties (void)
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
-    if (profile.topTemp != -1)      profiles[i].topTemp = profile.topTemp;
-    if (profile.conveyorRPH != -1)  profiles[i].conveyorRPH = profile.conveyorRPH;
-    if (profile.bottomTemp != -1)   profiles[i].bottomTemp = profile.bottomTemp;
+    if (profile.topTemp != -1)            profiles[i].topTemp = profile.topTemp;
+    if (profile.conveyorCookTime != -1)   profiles[i].conveyorCookTime = profile.conveyorCookTime / 10.0;
+    if (profile.bottomTemp != -1)         profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
@@ -1275,22 +1308,24 @@ void computeConveyorPID (void)
   }
   if (encoderSteps_counted == 0)  encoderLastStepTime = millis(); // If no encoder steps
   long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
-  double stepsPerMs = conveyorControl.setControl.value * STEPS_PER_REVOLUTION / 3600000.0; // RPH to Steps per milisecond
-  double encoderSteps_goal = stepsPerMs * encoderStepsCounter_duration;
+  double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
+  double stepsPerMs_goal = STEPS_TO_CROSS_OVEN / msToCrossOven_goal;
+  double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   /*
   Serial.print(" | encoderLastStepTime = "); Serial.print(encoderLastStepTime);
   Serial.print(" | last_encoderLastStepTime = "); Serial.print(last_encoderLastStepTime);
   Serial.print(" | conveyorControl.setControl.value = "); Serial.print(conveyorControl.setControl.value);
-  Serial.print(" | stepsPerMs = "); Serial.print(stepsPerMs);
-  Serial.print(" | encoderSteps_goal = "); Serial.print(encoderSteps_goal);
+  Serial.print(" | stepsPerMs_goal = "); Serial.print(stepsPerMs_goal);
+  Serial.print(" | encoderSteps_counted_goal = "); Serial.print(encoderSteps_counted_goal);
   Serial.println();
   */
-  conveyorPID.input += encoderSteps_counted - encoderSteps_goal;
+  conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
   conveyorPID.setpoint = 0;
   conveyorPID.Compute();
   analogWrite(CONVEYOR_L298N_PWM, conveyorPID.output);
   last_encoderLastStepTime = encoderLastStepTime;
-  conveyorControl.sensors.value = encoderSteps_counted * 3600000.0 / STEPS_PER_REVOLUTION / encoderStepsCounter_duration;
+  if (encoderSteps_counted == 0) conveyorControl.sensors.value = 9999;
+  else conveyorControl.sensors.value = STEPS_TO_CROSS_OVEN / 60000.0 / encoderSteps_counted * encoderStepsCounter_duration;
 }
 
 void drawGraphPoint()
