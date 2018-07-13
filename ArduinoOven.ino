@@ -1409,15 +1409,12 @@ void setup()
   // PIDs
     topPID.loadParameters();
     topPID.SetSampleTime(TOP_PID_INTERVAL);
-    topPID.SetOutputLimits(topPID.minOutput, topPID.maxOutput);
     topPID.SetMode(AUTOMATIC);
     bottomPID.loadParameters();
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
-    bottomPID.SetOutputLimits(bottomPID.minOutput, bottomPID.maxOutput);
     bottomPID.SetMode(AUTOMATIC);
     conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
-    conveyorPID.SetOutputLimits(conveyorPID.minOutput, conveyorPID.maxOutput);
     conveyorPID.SetMode(AUTOMATIC);
 
   // Servos
