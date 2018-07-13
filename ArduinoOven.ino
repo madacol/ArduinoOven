@@ -624,7 +624,7 @@ TSPoint getAvgTouchPoint(void)
   }
   if (count < QUORUM) tp.z=0;
   else { tp.x /= count; tp.y /= count; tp.z /= count; } // get average
-  int temp = map(tp.y, 90, 855, 0, dispX-1);
+  int temp = map(tp.y, 120, 870, 0, dispX-1);
   tp.y = map(tp.x, 907, 130, 0, dispY-1);
   tp.x = temp;
   return tp;
