@@ -422,12 +422,12 @@ class Pid : public PID {
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
 
-    void increaseKp (void) {kp++;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (void) {kp--;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
-    void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void increaseKp (void) {kp+=0.1;      updateTuning(); topTempControl.setControl.draw(kp);};
+    void decreaseKp (void) {kp-=0.1;      updateTuning(); topTempControl.setControl.draw(kp);};
+    void increaseKi (void) {ki+=0.01;     updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.01;     updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKd (void) {kd+=0.1;      updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void decreaseKd (void) {kd-=0.1;      updateTuning(); bottomTempControl.setControl.draw(kd);};
 
     void increaseMinOutput    (void) {minOutput+=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
     void decreaseMinOutput    (void) {minOutput-=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
@@ -438,9 +438,9 @@ class Pid : public PID {
 
     void saveParameters (void) {
       PidEEPROM pid;
-      pid.kp = kp;
-      pid.ki = ki*10;
-      pid.kd = kd;
+      pid.kp = kp*10;
+      pid.ki = ki*100;
+      pid.kd = kd*10;
       pid.minOutput   = minOutput;
       pid.startOutput = startOutput;
       pid.maxOutput   = maxOutput;
@@ -449,9 +449,9 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      if (pid.kp != 255) kp = pid.kp;
-      if (pid.ki != 255) ki = pid.ki/10.0;
-      if (pid.kd != 255) kd = pid.kd;
+      if (pid.kp != 255) kp = pid.kp/10.0;
+      if (pid.ki != 255) ki = pid.ki/100.0;
+      if (pid.kd != 255) kd = pid.kd/10.0;
       if (pid.minOutput != -1)    minOutput   = pid.minOutput;
       if (pid.startOutput != -1)  startOutput = pid.startOutput;
       if (pid.maxOutput != -1)    maxOutput   = pid.maxOutput;
