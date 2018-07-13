@@ -72,10 +72,10 @@
     #define CONVEYOR_PID_MAX_WIDTH  255
 
 // Graphs
-  #define TOP_TEMP_MIN_RANGE      250
-  #define TOP_TEMP_MAX_RANGE      450
-  #define BOTTOM_TEMP_MIN_RANGE   150
-  #define BOTTOM_TEMP_MAX_RANGE   350
+  #define TOP_TEMP_MIN_RANGE      200
+  #define TOP_TEMP_MAX_RANGE      400
+  #define BOTTOM_TEMP_MIN_RANGE   200
+  #define BOTTOM_TEMP_MAX_RANGE   400
   #define CONVEYOR_MIN_RANGE      -50
   #define CONVEYOR_MAX_RANGE      50
 
@@ -186,8 +186,10 @@
 
 String stringifyDouble (double number) {
   char buffer[6];
-  if (number == int(number))  return String(int(number));
-  else                        return dtostrf(number,1,1, buffer);
+  if (number == int(number))              return String(int(number));
+  else if (number > -1 and number < 10)  return dtostrf(number,4,2, buffer);
+  else                                    return dtostrf(number,1,1, buffer);
+
 }
 
 // ###############################################################
