@@ -51,7 +51,6 @@
 
 // PID
   #include <PID_v1.h>
-  #define PID_MANUAL_THRESHOLD  15
   // Top
     #define TOP_PID_KP          10
     #define TOP_PID_KI          1
@@ -1273,17 +1272,7 @@ void computeTopPID (void)
   // else  To-do: Alert Sensor Error
 
   topPID.setpoint = topTempControl.setControl.value;
-  double gap = topPID.input - topPID.setpoint;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    topPID.SetMode(MANUAL);
-    topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
-  } else if ( gap < -PID_MANUAL_THRESHOLD ) {
-    topPID.SetMode(MANUAL);
-    topPID.output = topPID.GetDirection() == DIRECT ? topPID.maxOutput : topPID.minOutput;
-  } else {
-    topPID.SetMode(AUTOMATIC);
-    topPID.Compute();
-  }
+  topPID.Compute();
   topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
@@ -1299,17 +1288,7 @@ void computeBottomPID (void)
   // else  To-do: Alert Sensor Error
 
   bottomPID.setpoint = bottomTempControl.setControl.value;
-  double gap = bottomPID.input - bottomPID.setpoint;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    bottomPID.SetMode(MANUAL);
-    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
-  } else if ( gap < -PID_MANUAL_THRESHOLD ) {
-    bottomPID.SetMode(MANUAL);
-    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.maxOutput : bottomPID.minOutput;
-  } else {
-    bottomPID.SetMode(AUTOMATIC);
-    bottomPID.Compute();
-  }
+  bottomPID.Compute();
   bottomServo.writeMicroseconds(bottomPID.output);
 }
 void computeConveyorPID (void)
