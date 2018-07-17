@@ -452,12 +452,12 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      if (pid.kp > 0 and pid.kp < 1000) kp = pid.kp;
-      if (pid.ki > 0 and pid.ki < 1000) ki = pid.ki/100.0;
-      if (pid.kd > 0 and pid.kd < 1000) kd = pid.kd;
-      if (pid.minOutput != -1)    minOutput   = pid.minOutput;
-      if (pid.startOutput != -1)  startOutput = pid.startOutput;
-      if (pid.maxOutput != -1)    maxOutput   = pid.maxOutput;
+      if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp;
+      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/100.0;
+      if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd;
+      if (pid.minOutput   >= 0 and pid.minOutput   < 2000)   minOutput   = pid.minOutput;
+      if (pid.startOutput >= 0 and pid.startOutput < 2000)   startOutput = pid.startOutput;
+      if (pid.maxOutput   >= 0 and pid.maxOutput   < 2000)   maxOutput   = pid.maxOutput;
       updateTuning(); updateOutputLimits();
     }
 
@@ -589,9 +589,9 @@ void calculateProfilesProperties (void)
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
-    if (profile.topTemp > -0 and profile.topTemp < 1000)          profiles[i].topTemp = profile.topTemp;
-    if (profile.cookTime > -1000 and profile.cookTime < 1000)        profiles[i].cookTime = profile.cookTime / 10.0;
-    if (profile.bottomTemp > -0 and profile.bottomTemp < 1000)    profiles[i].bottomTemp = profile.bottomTemp;
+    if (profile.topTemp     >= -1000  and profile.topTemp     < 1000)   profiles[i].topTemp = profile.topTemp;
+    if (profile.cookTime    >= -1000  and profile.cookTime    < 1000)   profiles[i].cookTime = profile.cookTime / 10.0;
+    if (profile.bottomTemp  >= -1000  and profile.bottomTemp  < 1000)   profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
