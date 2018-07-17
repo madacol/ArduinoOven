@@ -427,8 +427,8 @@ class Pid : public PID {
 
     void increaseKp (void) {kp++;     updateTuning(); topTempControl.setControl.draw(kp);};
     void decreaseKp (void) {kp--;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.01;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.01;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKi (void) {ki+=0.01; updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.01; updateTuning(); conveyorControl.setControl.draw(ki);};
     void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
 
@@ -473,9 +473,9 @@ class Profile : public Block {
     bool isActive = false;
     byte id;
 
-    Profile(int _topTemp, int _conveyorCookTime, int _bottomTemp):
+    Profile(int _topTemp, int _cookTime, int _bottomTemp):
       topTemp(_topTemp),
-      cookTime(_conveyorCookTime),
+      cookTime(_cookTime),
       bottomTemp(_bottomTemp)
     {};
 
