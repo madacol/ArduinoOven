@@ -188,10 +188,11 @@
 String stringifyDouble (double number) {
   char buffer[6];
   if (number == int(number))              return String(int(number));
-  else if (number > -1 and number < 10)  return dtostrf(number,4,2, buffer);
+  else if (number > 0 and number < 1)     return String(dtostrf(number,4,3, buffer)).substring(1);
+  else if (number > -1 and number < 10)   return dtostrf(number,4,2, buffer);
   else                                    return dtostrf(number,1,1, buffer);
-
 }
+
 
 // ###############################################################
 // #########################   CLASSES   #########################
@@ -425,12 +426,12 @@ class Pid : public PID {
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
 
-    void increaseKp (void) {kp++;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (void) {kp--;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.01; updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.01; updateTuning(); conveyorControl.setControl.draw(ki);};
-    void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
-    void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void increaseKp (void) {kp++;       updateTuning(); topTempControl.setControl.draw(kp);};
+    void decreaseKp (void) {kp--;       updateTuning(); topTempControl.setControl.draw(kp);};
+    void increaseKi (void) {ki+=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKd (void) {kd++;       updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void decreaseKd (void) {kd--;       updateTuning(); bottomTempControl.setControl.draw(kd);};
 
     void increaseMinOutput    (void) {minOutput+=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
     void decreaseMinOutput    (void) {minOutput-=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
@@ -442,7 +443,7 @@ class Pid : public PID {
     void saveParameters (void) {
       PidEEPROM pid;
       pid.kp = kp;
-      pid.ki = ki*100;
+      pid.ki = ki*1000;
       pid.kd = kd;
       pid.minOutput   = minOutput;
       pid.startOutput = startOutput;
@@ -453,7 +454,7 @@ class Pid : public PID {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
       if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp;
-      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/100.0;
+      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/1000.0;
       if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd;
       if (pid.minOutput   >= 0 and pid.minOutput   < 2000)   minOutput   = pid.minOutput;
       if (pid.startOutput >= 0 and pid.startOutput < 2000)   startOutput = pid.startOutput;
