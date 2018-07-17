@@ -132,9 +132,9 @@
 
 // EEPROM
   #include <EEPROM.h>
-  struct PidEEPROM { byte kp;  byte ki;  byte kd; int minOutput;  int startOutput;  int maxOutput; };
+  struct PidEEPROM { int kp;  int ki;  int kd; int minOutput;  int startOutput;  int maxOutput; };
   struct ServoEEPROM { int minWidth;  int maxWidth; };
-  struct ProfileEEPROM { int topTemp;  int conveyorCookTime;  int bottomTemp; };
+  struct ProfileEEPROM { int topTemp;  int cookTime;  int bottomTemp; };
   // Addresses
     // PIDs
       #define TOP_PID_ADDRESS         0
@@ -426,8 +426,8 @@ class Pid : public PID {
 
     void increaseKp (void) {kp++;     updateTuning(); topTempControl.setControl.draw(kp);};
     void decreaseKp (void) {kp--;     updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.1;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKi (void) {ki+=0.01;  updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (void) {ki-=0.01;  updateTuning(); conveyorControl.setControl.draw(ki);};
     void increaseKd (void) {kd++;     updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--;     updateTuning(); bottomTempControl.setControl.draw(kd);};
 
@@ -441,7 +441,7 @@ class Pid : public PID {
     void saveParameters (void) {
       PidEEPROM pid;
       pid.kp = kp;
-      pid.ki = ki*10;
+      pid.ki = ki*100;
       pid.kd = kd;
       pid.minOutput   = minOutput;
       pid.startOutput = startOutput;
@@ -451,9 +451,9 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      if (pid.kp != 255) kp = pid.kp;
-      if (pid.ki != 255) ki = pid.ki/10.0;
-      if (pid.kd != 255) kd = pid.kd;
+      if (pid.kp > 0 and pid.kp < 1000) kp = pid.kp;
+      if (pid.ki > 0 and pid.ki < 1000) ki = pid.ki/100.0;
+      if (pid.kd > 0 and pid.kd < 1000) kd = pid.kd;
       if (pid.minOutput != -1)    minOutput   = pid.minOutput;
       if (pid.startOutput != -1)  startOutput = pid.startOutput;
       if (pid.maxOutput != -1)    maxOutput   = pid.maxOutput;
@@ -468,13 +468,13 @@ class Profile : public Block {
   public:
     int bottomTemp;
     int topTemp;
-    double conveyorCookTime;
+    double cookTime;
     bool isActive = false;
     byte id;
 
     Profile(int _topTemp, int _conveyorCookTime, int _bottomTemp):
       topTemp(_topTemp),
-      conveyorCookTime(_conveyorCookTime),
+      cookTime(_conveyorCookTime),
       bottomTemp(_bottomTemp)
     {};
 
@@ -488,14 +488,14 @@ class Profile : public Block {
           myGLCD.print(String(id+1), startX+9 , startY+9);
         myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
           myGLCD.print(String(topTemp), startX+38, startY+6);
-          myGLCD.print(stringifyDouble(conveyorCookTime), startX+38, startY+6+14);
+          myGLCD.print(stringifyDouble(cookTime), startX+38, startY+6+14);
           myGLCD.print(String(bottomTemp), startX+38, startY+6+28);
     };
 
     void load(void)
     {
       topTempControl.setControl.value = topTemp;
-      conveyorControl.setControl.value = conveyorCookTime;
+      conveyorControl.setControl.value = cookTime;
       bottomTempControl.setControl.value = bottomTemp;
       isActive = true;
       draw();
@@ -513,7 +513,7 @@ class Profile : public Block {
     void save(void)
     {
       topTemp = topTempControl.setControl.value;
-      conveyorCookTime = conveyorControl.setControl.value;
+      cookTime = conveyorControl.setControl.value;
       bottomTemp = bottomTempControl.setControl.value;
       isActive = true;
       saveToEEPROM();
@@ -524,7 +524,7 @@ class Profile : public Block {
     {
       ProfileEEPROM profile;
       profile.topTemp = topTemp;
-      profile.conveyorCookTime = int( conveyorCookTime * 10 );
+      profile.cookTime = int( cookTime * 10 );
       profile.bottomTemp = bottomTemp;
       byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * id;
       EEPROM.put(address, profile);
@@ -532,7 +532,7 @@ class Profile : public Block {
     };
 
 } profiles[] = {
-  // Profile(topTemp, conveyorCookTime, bottomTemp)
+  // Profile(topTemp, cookTime, bottomTemp)
   Profile(0,100,0),
   Profile(340,-150,200),
   Profile(340,150,200),
@@ -566,7 +566,7 @@ class Profiles : public Block {
   }
 
 } profiles2(
-  // Profile(topTemp, conveyorCookTime, bottomTemp)
+  // Profile(topTemp, cookTime, bottomTemp)
   Profile(110,120,130),
   Profile(210,220,230),
   Profile(310,320,330),
@@ -588,9 +588,9 @@ void calculateProfilesProperties (void)
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
-    if (profile.topTemp != -1)            profiles[i].topTemp = profile.topTemp;
-    if (profile.conveyorCookTime != -1)   profiles[i].conveyorCookTime = profile.conveyorCookTime / 10.0;
-    if (profile.bottomTemp != -1)         profiles[i].bottomTemp = profile.bottomTemp;
+    if (profile.topTemp > -0 and profile.topTemp < 1000)          profiles[i].topTemp = profile.topTemp;
+    if (profile.cookTime > -1000 and profile.cookTime < 1000)        profiles[i].cookTime = profile.cookTime / 10.0;
+    if (profile.bottomTemp > -0 and profile.bottomTemp < 1000)    profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
