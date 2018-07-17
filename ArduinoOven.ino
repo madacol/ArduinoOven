@@ -1274,13 +1274,11 @@ void computeTopPID (void)
 
   topPID.setpoint = topTempControl.setControl.value;
   double gap = topPID.input - topPID.setpoint;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    topPID.SetMode(MANUAL);
-    topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
-  } else if ( gap < -PID_MANUAL_THRESHOLD ) {
+  if ( gap < -PID_MANUAL_THRESHOLD ) {
     topPID.SetMode(MANUAL);
     topPID.output = topPID.GetDirection() == DIRECT ? topPID.maxOutput : topPID.minOutput;
   } else {
+    if (topPID.GetMode() == MANUAL)  topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
     topPID.SetMode(AUTOMATIC);
     topPID.Compute();
   }
@@ -1300,13 +1298,11 @@ void computeBottomPID (void)
 
   bottomPID.setpoint = bottomTempControl.setControl.value;
   double gap = bottomPID.input - bottomPID.setpoint;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    bottomPID.SetMode(MANUAL);
-    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
-  } else if ( gap < -PID_MANUAL_THRESHOLD ) {
+  if ( gap < -PID_MANUAL_THRESHOLD ) {
     bottomPID.SetMode(MANUAL);
     bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.maxOutput : bottomPID.minOutput;
   } else {
+    if (bottomPID.GetMode() == MANUAL)  bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
     bottomPID.SetMode(AUTOMATIC);
     bottomPID.Compute();
   }
