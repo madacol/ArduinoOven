@@ -126,10 +126,12 @@
   #define DRAW_SENSORS_INTERVAL        1000
   #define DRAW_GRAPH_POINT_INTERVAL    300
 
-// Sensors Draw turn
-  #define TOP_TURN        0
-  #define CONVEYOR_TURN   1+TOP_TURN
-  #define BOTTOM_TURN     1+CONVEYOR_TURN
+// Sensors Draw
+  #define ERROR_DURATION_MS     10000
+  //Turns
+    #define TOP_TURN        0
+    #define CONVEYOR_TURN   1+TOP_TURN
+    #define BOTTOM_TURN     1+CONVEYOR_TURN
 
 // EEPROM
   #include <EEPROM.h>
@@ -218,6 +220,8 @@ class Block : public Coordinates {
     int lowlightbackgroundColor = BLACK;
     int lowlightforegroundColor = WHITE;
     int old_backgroundColor;
+    long lastTimeSinceError;
+    bool isErrorActive = false;
 
     void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
     void lowlight(void) { backgroundColor = lowlightbackgroundColor; foregroundColor = lowlightforegroundColor; };
@@ -231,6 +235,20 @@ class Block : public Coordinates {
         old_backgroundColor = backgroundColor;
       }
     }
+    void showError (void) {
+      lastTimeSinceError = millis();
+      backgroundColor = MAGENTA;
+      foregroundColor = WHITE;
+      isErrorActive = true;
+    };
+    void showError (String str) {
+      showError();
+      Serial.print("ERROR: ");Serial.print(str);Serial.println();
+    }
+    void removeError (void) {
+      isErrorActive = false;
+      lowlight();
+    };
 };
 
 class MinusButton : public Block {
@@ -1253,9 +1271,21 @@ void drawSensors (void)
 {
   static byte turn;
   switch (turn) {
-    case TOP_TURN:         topTempControl.sensors.draw(); break;
-    case CONVEYOR_TURN:    conveyorControl.sensors.draw(); break;
-    case BOTTOM_TURN:      bottomTempControl.sensors.draw(); break;
+    case TOP_TURN:
+      if ( topTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - topTempControl.sensors.lastTimeSinceError )
+        topTempControl.sensors.removeError();
+      topTempControl.sensors.draw();
+    break;
+    case CONVEYOR_TURN:
+      if ( conveyorControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - conveyorControl.sensors.lastTimeSinceError )
+        conveyorControl.sensors.removeError();
+      conveyorControl.sensors.draw();
+    break;
+    case BOTTOM_TURN:
+      if ( bottomTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - bottomTempControl.sensors.lastTimeSinceError )
+        bottomTempControl.sensors.removeError();
+      bottomTempControl.sensors.draw();
+    break;
   }
   if (turn == BOTTOM_TURN)  turn = TOP_TURN;
   else                      turn++;
@@ -1270,7 +1300,7 @@ void computeTopPID (void)
   if (!isnan(topTempControl.sensors.value2))
     { valueSum += topTempControl.sensors.value2; validReads++; }
   if (validReads > 0)   topPID.input = valueSum / validReads;
-  else topTempControl.sensors.backgroundColor = MAGENTA;
+  else topTempControl.sensors.showError("No valid reads top sensors");
   // else  To-do: Alert Sensor Error
 
   topPID.setpoint = topTempControl.setControl.value;
@@ -1294,7 +1324,7 @@ void computeBottomPID (void)
   if (!isnan(bottomTempControl.sensors.value2))
     { valueSum += bottomTempControl.sensors.value2; validReads++; }
   if (validReads > 0)   bottomPID.input = valueSum / validReads;
-  else bottomTempControl.sensors.backgroundColor = MAGENTA;
+  else bottomTempControl.sensors.showError("No valid reads bottom sensors");
   // else  To-do: Alert Sensor Error
 
   bottomPID.setpoint = bottomTempControl.setControl.value;
