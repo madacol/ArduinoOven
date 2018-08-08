@@ -52,7 +52,7 @@
 
 // PID
   #include <PID_v1.h>
-  #define PID_MANUAL_THRESHOLD  15
+  #define PID_MANUAL_THRESHOLD  30
   // Top
     #define TOP_PID_KP          10
     #define TOP_PID_KI          1
@@ -78,8 +78,8 @@
   #define TOP_TEMP_MAX_RANGE      400
   #define BOTTOM_TEMP_MIN_RANGE   200
   #define BOTTOM_TEMP_MAX_RANGE   400
-  #define CONVEYOR_MIN_RANGE      -50
-  #define CONVEYOR_MAX_RANGE      50
+  #define CONVEYOR_MIN_RANGE      -100
+  #define CONVEYOR_MAX_RANGE      100
 
 // TouchScreen
   #include <TouchScreen.h>
@@ -196,6 +196,10 @@ String stringifyDouble (double number) {
   else                                    return dtostrf(number,1,1, buffer);
 }
 
+void debug(String str) {
+  Serial.println(str);
+}
+
 
 // ###############################################################
 // #########################   CLASSES   #########################
@@ -244,7 +248,9 @@ class Block : public Coordinates {
     };
     void showError (String str) {
       showError();
-      Serial.print("ERROR: ");Serial.print(str);Serial.println();
+      #if defined(DEBUG) || defined(DEBUG_SENSOR_SHOW_ERROR)
+        Serial.print("ERROR: ");Serial.print(str);Serial.println();
+      #endif
     }
     void removeError (void) {
       isErrorActive = false;
@@ -660,8 +666,8 @@ TSPoint getAvgTouchPoint(void)
   }
   if (count < QUORUM) tp.z=0;
   else { tp.x /= count; tp.y /= count; tp.z /= count; } // get average
-  int temp = map(tp.y, 120, 870, 0, dispX-1);
-  tp.y = map(tp.x, 907, 130, 0, dispY-1);
+  int temp = map(tp.y, 930, 140, 0, dispX-1);
+  tp.y = map(tp.x, 150, 900, 0, dispY-1);
   tp.x = temp;
   return tp;
 }
@@ -674,7 +680,7 @@ bool isPressed (TSPoint tp)
 bool hasTouchStatusChanged () {
   return TouchStatus != lastTouchStatus;
 }
-/*
+
 void showPIDs(Pid pid)
 {
   Serial.print("\r\nInput="); Serial.print(pid.input);
@@ -685,7 +691,7 @@ void showPIDs(Pid pid)
   Serial.print(" kd="); Serial.print(pid.GetKd());
   Serial.println();
 }
-*/
+
 
 void drawProfiles(void)
 {
@@ -1320,8 +1326,8 @@ void computeTopPID (void)
   // else  To-do: Alert Sensor Error
 
   topPID.setpoint = topTempControl.setControl.value;
-  double gap = topPID.input - topPID.setpoint;
-  if ( gap < -PID_MANUAL_THRESHOLD ) {
+  double gap = topPID.setpoint - topPID.input;
+  if ( gap > PID_MANUAL_THRESHOLD ) {
     topPID.SetMode(MANUAL);
     topPID.output = topPID.GetDirection() == DIRECT ? topPID.maxOutput : topPID.minOutput;
   } else {
@@ -1329,6 +1335,9 @@ void computeTopPID (void)
     topPID.SetMode(AUTOMATIC);
     topPID.Compute();
   }
+  #if defined(DEBUG) || defined(DEBUG_TOP_PID)
+    showPIDs(bottomPID);
+  #endif
   topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
@@ -1344,8 +1353,8 @@ void computeBottomPID (void)
   // else  To-do: Alert Sensor Error
 
   bottomPID.setpoint = bottomTempControl.setControl.value;
-  double gap = bottomPID.input - bottomPID.setpoint;
-  if ( gap < -PID_MANUAL_THRESHOLD ) {
+  double gap = bottomPID.setpoint - bottomPID.input;
+  if ( gap > PID_MANUAL_THRESHOLD ) {
     bottomPID.SetMode(MANUAL);
     bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.maxOutput : bottomPID.minOutput;
   } else {
@@ -1353,6 +1362,9 @@ void computeBottomPID (void)
     bottomPID.SetMode(AUTOMATIC);
     bottomPID.Compute();
   }
+  #if defined(DEBUG) || defined(DEBUG_BOTTOM_PID)
+    showPIDs(bottomPID);
+  #endif
   bottomServo.writeMicroseconds(bottomPID.output);
 }
 void computeConveyorPID (void)
@@ -1377,15 +1389,18 @@ void computeConveyorPID (void)
   double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
   double stepsPerMs_goal = STEPS_TO_CROSS_OVEN / msToCrossOven_goal;
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
-  /*
-  Serial.print(" | encoderLastStepTime = "); Serial.print(encoderLastStepTime);
-  Serial.print(" | last_encoderLastStepTime = "); Serial.print(last_encoderLastStepTime);
-  Serial.print(" | conveyorControl.setControl.value = "); Serial.print(conveyorControl.setControl.value);
-  Serial.print(" | stepsPerMs_goal = "); Serial.print(stepsPerMs_goal);
-  Serial.print(" | encoderSteps_counted_goal = "); Serial.print(encoderSteps_counted_goal);
-  Serial.println();
-  */
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
+
+  #if defined(DEBUG) || defined(DEBUG_CONVEYOR_PID)
+    Serial.println();
+    Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
+    Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
+    Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
+    Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
+    Serial.print(" | encoderSteps_counted = "); Serial.print(encoderSteps_counted);
+    Serial.println();
+  #endif
+
   conveyorPID.setpoint = 0;
   conveyorPID.Compute();
   analogWrite(CONVEYOR_L298N_PWM, conveyorPID.output);
@@ -1402,16 +1417,13 @@ void drawGraphPoint()
   int setpoint = map(*setpointGraph, minInputSetpointGraph, maxInputSetpointGraph, dispY-1, 0);
   int output   = map(*outputGraph,   minOutputGraph,        maxOutputGraph,        dispY-1, 0);
 
-  // clean column by drawing a BLACK line from top to bottom
-  myGLCD.setColor(BLACK);       myGLCD.drawLine(column,0,column,dispY-1);
-
   // draw points on the graph
   myGLCD.setColor(GREEN);       myGLCD.drawPixel(column, setpoint);
   myGLCD.setColor(BLUE);        myGLCD.drawPixel(column, output);
   myGLCD.setColor(RED);         myGLCD.drawPixel(column, input);
 
-  if (column < 320) column++;
-  else              column = 0;
+  if (column == dispX-1)  column=0;
+  else                    column++;
 }
 
 void increaseEncoderCounter (void)
@@ -1432,7 +1444,7 @@ void increaseEncoderCounter (void)
 void setup()
 {
   SPI.begin();
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("ArduinoOven");
 
   // Display init
@@ -1454,6 +1466,21 @@ void setup()
     conveyorControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
     topTempControl.setCoordinates( isOutline, conveyorControl.startY - gridHeight );
     calculateProfilesProperties();
+
+  // Servos
+    topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
+    bottomServo.attach(BOTTOM_SERVO_PIN);   bottomServo.writeMicroseconds(bottomPID.startOutput);
+    pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
+    pinMode(CONVEYOR_L298N_DIR1_PIN , OUTPUT);
+    pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
+
+  // Relays
+    pinMode(VALVE_PIN, OUTPUT);
+    digitalWrite(VALVE_PIN, LOW);
+    pinMode(SPARK_PIN, OUTPUT);
+    digitalWrite(SPARK_PIN, LOW);
+    delay(SPARK_IGNITION_TIME);     // Turn on Sparks for SPARK_IGNITION_TIME miliseconds
+    digitalWrite(SPARK_PIN, HIGH);
 
   controlSetpoints();
   loadProfile(0);
@@ -1483,20 +1510,6 @@ void setup()
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetMode(AUTOMATIC);
 
-  // Servos
-    topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
-    bottomServo.attach(BOTTOM_SERVO_PIN);   bottomServo.writeMicroseconds(bottomPID.startOutput);
-    pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
-    pinMode(CONVEYOR_L298N_DIR1_PIN , OUTPUT);
-    pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
-
-  // Relays
-    pinMode(VALVE_PIN, OUTPUT);
-    digitalWrite(VALVE_PIN, LOW);
-    pinMode(SPARK_PIN, OUTPUT);
-    digitalWrite(SPARK_PIN, LOW);
-    delay(SPARK_IGNITION_TIME);     // Turn on Sparks for SPARK_IGNITION_TIME miliseconds
-    digitalWrite(SPARK_PIN, HIGH);
 
   // Encoder
     pinMode(ENCODER_PIN, INPUT);
