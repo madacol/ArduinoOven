@@ -685,6 +685,7 @@ bool hasTouchStatusChanged () {
   return TouchStatus != lastTouchStatus;
 }
 
+void showPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
 void showPIDs(Pid pid)
 {
   Serial.print("\r\nInput="); Serial.print(pid.input);
@@ -695,7 +696,6 @@ void showPIDs(Pid pid)
   Serial.print(" kd="); Serial.print(pid.GetKd());
   Serial.println();
 }
-
 
 void drawProfiles(void)
 {
