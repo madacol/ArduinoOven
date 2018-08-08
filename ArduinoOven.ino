@@ -1502,9 +1502,11 @@ void setup()
   // PIDs
     topPID.loadParameters();
     topPID.SetSampleTime(TOP_PID_INTERVAL);
+    topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
     topPID.SetMode(AUTOMATIC);
     bottomPID.loadParameters();
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
+    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
     bottomPID.SetMode(AUTOMATIC);
     conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
