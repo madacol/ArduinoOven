@@ -28,6 +28,7 @@
   #define PIN_CS_TOP_TEMP_SENSOR_2     25
   #define PIN_CS_BOTTOM_TEMP_SENSOR_1  27
   #define PIN_CS_BOTTOM_TEMP_SENSOR_2  29
+  #define NUM_OF_MEASUREMENTS_TO_READ  10
 
 // Servos
   #include <Servo.h>  // Modified file ServoTimers.h: disabled timer5 to use analogWrite() on pins 44,45,46. Now timer1 is used.
@@ -307,13 +308,16 @@ class PlusButton : public Block {
     }
 };
 
-class Sensors : public Block {
+class TempSensors : public Block {
   public:
     double value1;
     double value2;
+    double values1[NUM_OF_MEASUREMENTS_TO_READ];
+    double values2[NUM_OF_MEASUREMENTS_TO_READ];
+    byte counter;
     MAX6675 Sensor1;
     MAX6675 Sensor2;
-    Sensors(byte pinSensor1CS,byte pinSensor2CS):
+    TempSensors(byte pinSensor1CS,byte pinSensor2CS):
       Sensor1(pinSensor1CS),
       Sensor2(pinSensor2CS)
     {};
@@ -333,8 +337,20 @@ class Sensors : public Block {
       */
     };
     void update(void) {
-      value1 = Sensor1.readCelsius();
-      value2 = Sensor2.readCelsius();
+      values1[counter] = Sensor1.readCelsius();     value1 = getAvgTemp(values1);
+      values2[counter] = Sensor2.readCelsius();     value2 = getAvgTemp(values2);
+      if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
+    };
+    double getAvgTemp (double value[NUM_OF_MEASUREMENTS_TO_READ]) {
+      double valueSum=0;
+      byte validReads=0;
+      for (byte i=0; i<NUM_OF_MEASUREMENTS_TO_READ; i++) {
+        if (!isnan(value[i])) {
+          valueSum += value[i];
+          validReads++;
+        };
+      };
+      if (validReads > 0) return valueSum / validReads;   else return NAN;
     };
 };
 
@@ -393,7 +409,7 @@ class Control : public Coordinates {
 class TempControl : public Control {
   public:
     SetControl setControl;
-    Sensors sensors;
+    TempSensors sensors;
     TempControl(byte pinSensor1CS,byte pinSensor2CS):
       sensors(pinSensor1CS, pinSensor2CS)
     {};
