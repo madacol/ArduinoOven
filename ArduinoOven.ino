@@ -44,8 +44,13 @@
   #define CONVEYOR_L298N_DIR2_PIN     40 // IN4
 
 // Encoder
-  #define ENCODER_PIN             21
-  #define STEPS_PER_REVOLUTION    200
+  #include <Encoder.h>
+  #define ENCODER_PIN_1               20
+  #define ENCODER_PIN_2               21
+  Encoder myEncoder(ENCODER_PIN_1, ENCODER_PIN_2);
+  #define STEPS_PER_REVOLUTION        200
+  #define ENCODER_REBOUND_MS          20
+  #define MAX_STEPS_PER_MS_OF_SYSTEM  0.022
 
 // Oven Specific Parameters
   #define STEPS_TO_CROSS_OVEN     STEPS_PER_REVOLUTION * (7+1/3)
@@ -173,7 +178,6 @@
 
 // Encoder
   long  last_encoderLastStepTime;
-  volatile long encoderStepsCounter, encoderStepTime; // volatile to use in interruptions
 
 // Graph
   double *inputGraph, *setpointGraph, *outputGraph;
@@ -360,7 +364,7 @@ class TempSensors : public Block {
     };
 };
 
-class Encoder : public Block {
+class EncoderBlock : public Block {
   public:
     double value;
 
@@ -384,7 +388,7 @@ class Control : public Coordinates {
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    Encoder sensors;
+    EncoderBlock sensors;
     virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -1370,22 +1374,27 @@ void computeBottomPID (void)
 void computeConveyorPID (void)
 {
   noInterrupts();
-    long encoderLastStepTime = encoderStepTime;
-    long encoderSteps_counted = encoderStepsCounter;
-    encoderStepsCounter=0;
+    long encoderSteps_counted = myEncoder.read();
+    myEncoder.write(0);
+    long encoderLastStepTime = millis();
   interrupts();
   static int oldSetcontrolValue;
+  static bool isReverse;
   if (conveyorControl.setControl.value != oldSetcontrolValue)
   {
-    if (conveyorControl.setControl.value < 0)
+    if (conveyorControl.setControl.value < 0) {
       digitalWrite(CONVEYOR_L298N_DIR1_PIN, HIGH), digitalWrite(CONVEYOR_L298N_DIR2_PIN, LOW);
-    else
+      isReverse = true;
+    }
+    else {
       digitalWrite(CONVEYOR_L298N_DIR1_PIN, LOW), digitalWrite(CONVEYOR_L298N_DIR2_PIN, HIGH);
-
+      isReverse = false;
+    }
     oldSetcontrolValue = conveyorControl.setControl.value;
   }
-  if (encoderSteps_counted == 0)  encoderLastStepTime = millis(); // If no encoder steps
+  if (isReverse)  encoderSteps_counted = -encoderSteps_counted;
   long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
+  double stepsPerMs_real = (double)encoderSteps_counted / encoderStepsCounter_duration;
   double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
   double stepsPerMs_goal = STEPS_TO_CROSS_OVEN / msToCrossOven_goal;
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
@@ -1407,6 +1416,7 @@ void computeConveyorPID (void)
   last_encoderLastStepTime = encoderLastStepTime;
   if (encoderSteps_counted == 0) conveyorControl.sensors.value = 9999;
   else conveyorControl.sensors.value = STEPS_TO_CROSS_OVEN / 60000.0 / encoderSteps_counted * encoderStepsCounter_duration;
+  if (stepsPerMs_real > MAX_STEPS_PER_MS_OF_SYSTEM)  conveyorControl.sensors.showError("Too fast, Impossible");
 }
 
 void drawGraphPoint()
@@ -1424,15 +1434,6 @@ void drawGraphPoint()
 
   if (column == dispX-1)  column=0;
   else                    column++;
-}
-
-void increaseEncoderCounter (void)
-{
-  if (millis()-encoderStepTime > 5)   // filter rebounds
-  {
-    encoderStepsCounter++;
-    encoderStepTime = millis();
-  }
 }
 
 
@@ -1511,12 +1512,6 @@ void setup()
     conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetMode(AUTOMATIC);
-
-
-  // Encoder
-    pinMode(ENCODER_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(ENCODER_PIN), increaseEncoderCounter, CHANGE);
-    encoderStepTime=millis();
 }
 
 
