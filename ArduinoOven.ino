@@ -29,6 +29,7 @@
   #define PIN_CS_BOTTOM_TEMP_SENSOR_1  27
   #define PIN_CS_BOTTOM_TEMP_SENSOR_2  29
   #define NUM_OF_MEASUREMENTS_TO_READ  10
+  #define MAX_TEMP_SENSOR_ERROR        30
 
 // Servos
   #include <Servo.h>  // Modified file ServoTimers.h: disabled timer5 to use analogWrite() on pins 44,45,46. Now timer1 is used.
@@ -347,8 +348,14 @@ class TempSensors : public Block {
       */
     };
     void update(void) {
-      values1[counter] = Sensor1.readCelsius();     value1 = getAvgTemp(values1);
-      values2[counter] = Sensor2.readCelsius();     value2 = getAvgTemp(values2);
+      double value1_tmp = Sensor1.readCelsius();
+      values1[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value1_tmp - value1) ) ? value1_tmp : value1;
+      value1 = getAvgTemp(values1);
+
+      double value2_tmp = Sensor2.readCelsius();
+      values2[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value2_tmp - value2) ) ? value2_tmp : value2;
+      value2 = getAvgTemp(values2);
+
       if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
     };
     double getAvgTemp (double value[NUM_OF_MEASUREMENTS_TO_READ]) {
@@ -1513,6 +1520,12 @@ void setup()
     conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetMode(AUTOMATIC);
+
+  // Thermocouples
+    memset(topTempControl.sensors.values1, topTempControl.sensors.Sensor1.readCelsius(), sizeof(topTempControl.sensors.values1));
+    memset(topTempControl.sensors.values2, topTempControl.sensors.Sensor2.readCelsius(), sizeof(topTempControl.sensors.values2));
+    memset(bottomTempControl.sensors.values1, bottomTempControl.sensors.Sensor1.readCelsius(), sizeof(bottomTempControl.sensors.values1));
+    memset(bottomTempControl.sensors.values2, bottomTempControl.sensors.Sensor2.readCelsius(), sizeof(bottomTempControl.sensors.values2));
 }
 
 
