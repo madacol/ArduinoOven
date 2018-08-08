@@ -580,9 +580,9 @@ class Profile : public Block {
 
 } profiles[] = {
   // Profile(topTemp, cookTime, bottomTemp)
-  Profile(0,100,0),
-  Profile(340,-150,200),
-  Profile(340,150,200),
+  Profile(0,10,0),
+  Profile(320,-10,270),
+  Profile(320,10,270),
   Profile(5,5,5),
   Profile(-5,-5,-5),
 };
