@@ -1,3 +1,12 @@
+//#define DEBUG
+#if defined DEBUG
+  #define DEBUG_CONVEYOR_PID
+  #define DEBUG_TOP_PID
+  #define DEBUG_BOTTOM_PID
+  #define DEBUG_SENSOR_SHOW_ERROR
+  #define DEBUG_SENSOR_TEMP
+#endif
+
 // Display
   #define  ORIENTATION  1
   #include <Adafruit_GFX.h>
@@ -253,9 +262,9 @@ class Block : public Coordinates {
     };
     void showError (String str) {
       showError();
-      #if defined(DEBUG) || defined(DEBUG_SENSOR_SHOW_ERROR)
-        Serial.print("ERROR: ");Serial.print(str);Serial.println();
-      #endif
+              #if defined DEBUG_SENSOR_SHOW_ERROR
+                Serial.print("ERROR: ");Serial.print(str);Serial.println();
+              #endif
     }
     void removeError (void) {
       isErrorActive = false;
@@ -351,10 +360,16 @@ class TempSensors : public Block {
       double value1_tmp = Sensor1.readCelsius();
       values1[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value1_tmp - value1) ) ? value1_tmp : value1;
       value1 = getAvgTemp(values1);
+              #if defined DEBUG_SENSOR_TEMP
+                Serial.print("-");        Serial.print(value1_tmp);        Serial.print("-");
+              #endif
 
       double value2_tmp = Sensor2.readCelsius();
       values2[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value2_tmp - value2) ) ? value2_tmp : value2;
       value2 = getAvgTemp(values2);
+              #if defined DEBUG_SENSOR_TEMP
+                Serial.print("-");        Serial.print(value2_tmp);        Serial.println("-");
+              #endif
 
       if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
     };
@@ -1347,9 +1362,9 @@ void computeTopPID (void)
     topPID.SetMode(AUTOMATIC);
     topPID.Compute();
   }
-  #if defined(DEBUG) || defined(DEBUG_TOP_PID)
-    showPIDs(bottomPID);
-  #endif
+          #if defined DEBUG_TOP_PID
+            showPIDs(bottomPID);
+          #endif
   topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
@@ -1374,9 +1389,9 @@ void computeBottomPID (void)
     bottomPID.SetMode(AUTOMATIC);
     bottomPID.Compute();
   }
-  #if defined(DEBUG) || defined(DEBUG_BOTTOM_PID)
-    showPIDs(bottomPID);
-  #endif
+          #if defined DEBUG_BOTTOM_PID
+            showPIDs(bottomPID);
+          #endif
   bottomServo.writeMicroseconds(bottomPID.output);
 }
 void computeConveyorPID (void)
@@ -1408,15 +1423,15 @@ void computeConveyorPID (void)
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
-  #if defined(DEBUG) || defined(DEBUG_CONVEYOR_PID)
-    Serial.println();
-    Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
-    Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
-    Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
-    Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
-    Serial.print(" | encoderSteps_counted = "); Serial.print(encoderSteps_counted);
-    Serial.println();
-  #endif
+        #if defined DEBUG_CONVEYOR_PID
+          Serial.println();
+          Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
+          Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
+          Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
+          Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
+          Serial.print(" | encoderSteps_counted = "); Serial.print(encoderSteps_counted);
+          Serial.println();
+        #endif
 
   conveyorPID.setpoint = 0;
   conveyorPID.Compute();
