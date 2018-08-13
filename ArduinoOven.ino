@@ -674,9 +674,9 @@ void calculateProfilesProperties (void)
     ProfileEEPROM profile;
     byte address = PROFILE_ADDRESS + sizeof(ProfileEEPROM) * i;
     EEPROM.get(address, profile);
-    if (profile.topTemp     >= -1000  and profile.topTemp     < 1000)   profiles[i].topTemp = profile.topTemp;
-    if (profile.cookTime    >= -1000  and profile.cookTime    < 1000)   profiles[i].cookTime = profile.cookTime / 10.0;
-    if (profile.bottomTemp  >= -1000  and profile.bottomTemp  < 1000)   profiles[i].bottomTemp = profile.bottomTemp;
+    if (profile.topTemp     >= 0      and profile.topTemp     < 1000)   profiles[i].topTemp = profile.topTemp;
+    if (profile.cookTime    >= -500   and profile.cookTime    < 500 )   profiles[i].cookTime = profile.cookTime / 10.0;
+    if (profile.bottomTemp  >= 0      and profile.bottomTemp  < 1000)   profiles[i].bottomTemp = profile.bottomTemp;
     profiles[i].id = i;
     profiles[i].startX = gridWidth*i + isOutline;
     profiles[i].startY = isOutline;
