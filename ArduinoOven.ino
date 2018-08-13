@@ -89,12 +89,9 @@
     #define CONVEYOR_PID_MAX_WIDTH  255
 
 // Graphs
-  #define TOP_TEMP_MIN_RANGE      200
-  #define TOP_TEMP_MAX_RANGE      400
-  #define BOTTOM_TEMP_MIN_RANGE   200
-  #define BOTTOM_TEMP_MAX_RANGE   400
-  #define CONVEYOR_MIN_RANGE      -100
-  #define CONVEYOR_MAX_RANGE      100
+  #define TOP_TEMP_GRAPH_RANGE      100
+  #define BOTTOM_TEMP_GRAPH_RANGE   100
+  #define CONVEYOR_GRAPH_RANGE      100
 
 // TouchScreen
   #include <TouchScreen.h>
@@ -852,36 +849,36 @@ void controlConveyorPID (void) {
   drawEverything();
 }
 void showTopPIDGraph (void) {
-  inputGraph      = &topPID.input;
-  setpointGraph   = &topPID.setpoint;
-  outputGraph     = &topPID.output;
-  minInputSetpointGraph = TOP_TEMP_MIN_RANGE;
-  maxInputSetpointGraph = TOP_TEMP_MAX_RANGE;
-  minOutputGraph   = topPID.minOutput;
-  maxOutputGraph   = topPID.maxOutput;
-  state           = SHOWING_GRAPH;
+  inputGraph                = &topPID.input;
+  setpointGraph             = &topPID.setpoint;
+  outputGraph               = &topPID.output;
+  minInputSetpointGraph     = topPID.setpoint - TOP_TEMP_GRAPH_RANGE;
+  maxInputSetpointGraph     = topPID.setpoint + TOP_TEMP_GRAPH_RANGE;
+  minOutputGraph            = topPID.minOutput;
+  maxOutputGraph            = topPID.maxOutput;
+  state                     = SHOWING_GRAPH;
   drawEverything();
 }
 void showBottomPIDGraph (void) {
-  inputGraph      = &bottomPID.input;
-  setpointGraph   = &bottomPID.setpoint;
-  outputGraph     = &bottomPID.output;
-  minInputSetpointGraph = BOTTOM_TEMP_MIN_RANGE;
-  maxInputSetpointGraph = BOTTOM_TEMP_MAX_RANGE;
-  minOutputGraph   = bottomPID.minOutput;
-  maxOutputGraph   = bottomPID.maxOutput;
-  state           = SHOWING_GRAPH;
+  inputGraph                = &bottomPID.input;
+  setpointGraph             = &bottomPID.setpoint;
+  outputGraph               = &bottomPID.output;
+  minInputSetpointGraph     = bottomPID.setpoint - BOTTOM_TEMP_GRAPH_RANGE;
+  maxInputSetpointGraph     = bottomPID.setpoint + BOTTOM_TEMP_GRAPH_RANGE;
+  minOutputGraph            = bottomPID.minOutput;
+  maxOutputGraph            = bottomPID.maxOutput;
+  state                     = SHOWING_GRAPH;
   drawEverything();
 }
 void showConveyorPIDGraph (void) {
-  inputGraph      = &conveyorPID.input;
-  setpointGraph   = &conveyorPID.setpoint;
-  outputGraph     = &conveyorPID.output;
-  minInputSetpointGraph = CONVEYOR_MIN_RANGE;
-  maxInputSetpointGraph = CONVEYOR_MAX_RANGE;
-  minOutputGraph   = conveyorPID.minOutput;
-  maxOutputGraph   = conveyorPID.maxOutput;
-  state           = SHOWING_GRAPH;
+  inputGraph                = &conveyorPID.input;
+  setpointGraph             = &conveyorPID.setpoint;
+  outputGraph               = &conveyorPID.output;
+  minInputSetpointGraph     = conveyorPID.setpoint - CONVEYOR_GRAPH_RANGE;
+  maxInputSetpointGraph     = conveyorPID.setpoint + CONVEYOR_GRAPH_RANGE;
+  minOutputGraph            = conveyorPID.minOutput;
+  maxOutputGraph            = conveyorPID.maxOutput;
+  state                     = SHOWING_GRAPH;
   drawEverything();
 }
 void controlTopOutputLimits (void) {
