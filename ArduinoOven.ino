@@ -330,8 +330,8 @@ class PlusButton : public Block {
 
 class TempSensors : public Block {
   public:
-    double value1;
-    double value2;
+    double value1Avg;
+    double value2Avg;
     double values1[NUM_OF_MEASUREMENTS_TO_READ];
     double values2[NUM_OF_MEASUREMENTS_TO_READ];
     byte counter;
@@ -346,8 +346,8 @@ class TempSensors : public Block {
       drawBackgroundIfHasChanged();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
-          myGLCD.print(String(int(value1)), startX+7, startY+7);
-          myGLCD.print(String(int(value2)), startX+7, startY+35);
+          myGLCD.print(String(int(value1Avg)), startX+7, startY+7);
+          myGLCD.print(String(int(value2Avg)), startX+7, startY+35);
 
       /* // Draw symbol: ±
       myGLCD.setColor(foregroundColor);
@@ -358,18 +358,38 @@ class TempSensors : public Block {
     };
     void update(void) {
       double value1_tmp = Sensor1.readCelsius();
-      values1[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value1_tmp - value1) ) ? value1_tmp : value1;
-      value1 = getAvgTemp(values1);
+
               #if defined DEBUG_SENSOR_TEMP
                 Serial.print("-");        Serial.print(value1_tmp);        Serial.print("-");
               #endif
 
+      if (!isnan(value1_tmp)) {
+        if ( MAX_TEMP_SENSOR_ERROR > abs(value1_tmp - value1Avg) )
+          values1[counter] = value1_tmp;
+        else {
+          byte maxError1 = (value1_tmp > value1Avg) ? MAX_TEMP_SENSOR_ERROR : -MAX_TEMP_SENSOR_ERROR;
+          values1[counter] = value1Avg + maxError1;
+          showError(String(value1_tmp));
+        }
+      } else values1[counter] = value1Avg;
+      value1Avg = getAvgTemp(values1);
+
       double value2_tmp = Sensor2.readCelsius();
-      values2[counter] = ( MAX_TEMP_SENSOR_ERROR > abs(value2_tmp - value2) ) ? value2_tmp : value2;
-      value2 = getAvgTemp(values2);
+
               #if defined DEBUG_SENSOR_TEMP
                 Serial.print("-");        Serial.print(value2_tmp);        Serial.println("-");
               #endif
+
+      if (!isnan(value2_tmp)) {
+        if ( MAX_TEMP_SENSOR_ERROR > abs(value2_tmp - value2Avg) )
+          values2[counter] = value2_tmp;
+        else {
+          byte maxError2 = (value2_tmp > value2Avg) ? MAX_TEMP_SENSOR_ERROR : -MAX_TEMP_SENSOR_ERROR;
+          values2[counter] = value2Avg + maxError2;
+          showError(String(value2_tmp));
+        }
+      } else values2[counter] = value2Avg;
+      value2Avg = getAvgTemp(values2);
 
       if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
     };
@@ -1344,10 +1364,10 @@ void computeTopPID (void)
 {
   byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
   double valueSum;
-  if (!isnan(topTempControl.sensors.value1))
-    { valueSum += topTempControl.sensors.value1; validReads++; }
-  if (!isnan(topTempControl.sensors.value2))
-    { valueSum += topTempControl.sensors.value2; validReads++; }
+  if (!isnan(topTempControl.sensors.value1Avg))
+    { valueSum += topTempControl.sensors.value1Avg; validReads++; }
+  if (!isnan(topTempControl.sensors.value2Avg))
+    { valueSum += topTempControl.sensors.value2Avg; validReads++; }
   if (validReads > 0)   topPID.input = valueSum / validReads;
   else topTempControl.sensors.showError("No valid reads top sensors");
   // else  To-do: Alert Sensor Error
@@ -1371,10 +1391,10 @@ void computeBottomPID (void)
 {
   byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
   double valueSum;
-  if (!isnan(bottomTempControl.sensors.value1))
-    { valueSum += bottomTempControl.sensors.value1; validReads++; }
-  if (!isnan(bottomTempControl.sensors.value2))
-    { valueSum += bottomTempControl.sensors.value2; validReads++; }
+  if (!isnan(bottomTempControl.sensors.value1Avg))
+    { valueSum += bottomTempControl.sensors.value1Avg; validReads++; }
+  if (!isnan(bottomTempControl.sensors.value2Avg))
+    { valueSum += bottomTempControl.sensors.value2Avg; validReads++; }
   if (validReads > 0)   bottomPID.input = valueSum / validReads;
   else bottomTempControl.sensors.showError("No valid reads bottom sensors");
   // else  To-do: Alert Sensor Error
@@ -1537,10 +1557,15 @@ void setup()
     conveyorPID.SetMode(AUTOMATIC);
 
   // Thermocouples
-    memset(topTempControl.sensors.values1, topTempControl.sensors.Sensor1.readCelsius(), sizeof(topTempControl.sensors.values1));
-    memset(topTempControl.sensors.values2, topTempControl.sensors.Sensor2.readCelsius(), sizeof(topTempControl.sensors.values2));
-    memset(bottomTempControl.sensors.values1, bottomTempControl.sensors.Sensor1.readCelsius(), sizeof(bottomTempControl.sensors.values1));
-    memset(bottomTempControl.sensors.values2, bottomTempControl.sensors.Sensor2.readCelsius(), sizeof(bottomTempControl.sensors.values2));
+    // Populate temperatures arrays with current readings
+      for (byte i=0; i<NUM_OF_MEASUREMENTS_TO_READ; i++)    topTempControl.sensors.values1[i]    = topTempControl.sensors.Sensor1.readCelsius();   
+      for (byte i=0; i<NUM_OF_MEASUREMENTS_TO_READ; i++)    topTempControl.sensors.values2[i]    = topTempControl.sensors.Sensor2.readCelsius();   
+      for (byte i=0; i<NUM_OF_MEASUREMENTS_TO_READ; i++)    bottomTempControl.sensors.values1[i] = bottomTempControl.sensors.Sensor1.readCelsius();
+      for (byte i=0; i<NUM_OF_MEASUREMENTS_TO_READ; i++)    bottomTempControl.sensors.values2[i] = bottomTempControl.sensors.Sensor2.readCelsius();
+    topTempControl.sensors.value1Avg    = topTempControl.sensors.getAvgTemp   ( topTempControl.sensors.values1);
+    topTempControl.sensors.value2Avg    = topTempControl.sensors.getAvgTemp   ( topTempControl.sensors.values2);
+    bottomTempControl.sensors.value1Avg = bottomTempControl.sensors.getAvgTemp( bottomTempControl.sensors.values1);
+    bottomTempControl.sensors.value2Avg = bottomTempControl.sensors.getAvgTemp( bottomTempControl.sensors.values2);
 }
 
 
