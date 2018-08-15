@@ -3,9 +3,9 @@
   #define DEBUG_CONVEYOR_PID
   #define DEBUG_TOP_PID
   #define DEBUG_BOTTOM_PID
-  #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_SENSOR_TEMP
 #endif
+  #define DEBUG_SENSOR_SHOW_ERROR
 
 // Display
   #define  ORIENTATION  1
@@ -361,10 +361,11 @@ class TempSensors : public Block {
               #endif
 
       if (!isnan(value1_tmp)) {
-        if ( MAX_TEMP_SENSOR_ERROR > abs(value1_tmp - value1Avg) )
+        double value1diff = value1_tmp - value1Avg;
+        if ( abs(value1diff) <= MAX_TEMP_SENSOR_ERROR )
           values1[counter] = value1_tmp;
         else {
-          byte maxError1 = (value1_tmp > value1Avg) ? MAX_TEMP_SENSOR_ERROR : -MAX_TEMP_SENSOR_ERROR;
+          byte maxError1 = (value1diff < 0) ? -MAX_TEMP_SENSOR_ERROR : MAX_TEMP_SENSOR_ERROR;
           values1[counter] = value1Avg + maxError1;
           showError(String(value1_tmp));
         }
@@ -378,10 +379,11 @@ class TempSensors : public Block {
               #endif
 
       if (!isnan(value2_tmp)) {
-        if ( MAX_TEMP_SENSOR_ERROR > abs(value2_tmp - value2Avg) )
+        double value2diff = value2_tmp - value2Avg;
+        if ( abs(value2diff) <= MAX_TEMP_SENSOR_ERROR )
           values2[counter] = value2_tmp;
         else {
-          byte maxError2 = (value2_tmp > value2Avg) ? MAX_TEMP_SENSOR_ERROR : -MAX_TEMP_SENSOR_ERROR;
+          byte maxError2 = (value2diff < 0) ? -MAX_TEMP_SENSOR_ERROR : MAX_TEMP_SENSOR_ERROR;
           values2[counter] = value2Avg + maxError2;
           showError(String(value2_tmp));
         }
@@ -1361,13 +1363,10 @@ void computeTopPID (void)
 {
   byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
   double valueSum;
-  if (!isnan(topTempControl.sensors.value1Avg))
-    { valueSum += topTempControl.sensors.value1Avg; validReads++; }
-  if (!isnan(topTempControl.sensors.value2Avg))
-    { valueSum += topTempControl.sensors.value2Avg; validReads++; }
+  if (topTempControl.sensors.value1Avg > 0)    { valueSum += topTempControl.sensors.value1Avg; validReads++; }
+  if (topTempControl.sensors.value2Avg > 0)    { valueSum += topTempControl.sensors.value2Avg; validReads++; }
   if (validReads > 0)   topPID.input = valueSum / validReads;
   else topTempControl.sensors.showError("No valid reads top sensors");
-  // else  To-do: Alert Sensor Error
 
   topPID.setpoint = topTempControl.setControl.value;
   double gap = topPID.setpoint - topPID.input;
@@ -1388,13 +1387,10 @@ void computeBottomPID (void)
 {
   byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
   double valueSum;
-  if (!isnan(bottomTempControl.sensors.value1Avg))
-    { valueSum += bottomTempControl.sensors.value1Avg; validReads++; }
-  if (!isnan(bottomTempControl.sensors.value2Avg))
-    { valueSum += bottomTempControl.sensors.value2Avg; validReads++; }
+  if (bottomTempControl.sensors.value1Avg > 0)    { valueSum += bottomTempControl.sensors.value1Avg; validReads++; }
+  if (bottomTempControl.sensors.value2Avg > 0)    { valueSum += bottomTempControl.sensors.value2Avg; validReads++; }
   if (validReads > 0)   bottomPID.input = valueSum / validReads;
   else bottomTempControl.sensors.showError("No valid reads bottom sensors");
-  // else  To-do: Alert Sensor Error
 
   bottomPID.setpoint = bottomTempControl.setControl.value;
   double gap = bottomPID.setpoint - bottomPID.input;
