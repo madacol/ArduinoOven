@@ -8,6 +8,8 @@
   #define DEBUG_SENSOR_SHOW_ERROR
 
 // Display
+  #define  DISPLAY_WIDTH    320
+  #define  DISPLAY_HEIGHT   240
   #define  ORIENTATION  1
   #include <Adafruit_GFX.h>
   #include <UTFTGLUE.h>            // Modified file MCUFRIEND_kbv.h: Enabled #define SUPPORT_8347D
@@ -20,7 +22,7 @@
     #define BLUE        0x001F
     #define RED         0xF800
     #define GREEN       0x07E0
-    #define GREY        0x7BEF
+    #define GRAY        0x7BEF
     #define CYAN        0x07FF
     #define MAGENTA     0xF81F
     #define PALEGREEN   0x9FD3
@@ -92,6 +94,7 @@
   #define TOP_TEMP_GRAPH_RANGE      100
   #define BOTTOM_TEMP_GRAPH_RANGE   100
   #define CONVEYOR_GRAPH_RANGE      100
+  #define GRAPH_GRID_HEIGHT         DISPLAY_HEIGHT / 10
 
 // TouchScreen
   #include <TouchScreen.h>
@@ -137,7 +140,7 @@
   #define BOTTOM_PID_INTERVAL          1000
   #define CONVEYOR_PID_INTERVAL        1000
   #define DRAW_SENSORS_INTERVAL        1000
-  #define DRAW_GRAPH_POINT_INTERVAL    300
+  #define DRAW_GRAPH_POINT_INTERVAL    1000
 
 // Sensors Draw
   #define ERROR_DURATION_MS     10000
@@ -792,8 +795,11 @@ void drawEverything(void)
       bottomTempControl.draw(conveyorPID.kd);
     break;
     case SHOWING_GRAPH:
-      //clean screen
-      myGLCD.setColor(BLACK);      myGLCD.fillRect(0,0, dispX-1,dispY-1);
+      // Clean screen
+        myGLCD.setColor(BLACK);      myGLCD.fillRect(0,0, dispX-1,dispY-1);
+      // Draw Grid
+        myGLCD.setColor(GRAY);
+        for (int row=0; row < dispY; row+=GRAPH_GRID_HEIGHT)      myGLCD.drawLine(0, row, dispX-1, row);
     break;
     case CONTROLLING_TOP_OUTPUT_LIMITS:
       drawDivisions();
@@ -1464,9 +1470,9 @@ void drawGraphPoint()
   int output   = map(*outputGraph,   minOutputGraph,        maxOutputGraph,        dispY-1, 0);
 
   // draw points on the graph
-  myGLCD.setColor(GREEN);       myGLCD.drawPixel(column, setpoint);
-  myGLCD.setColor(BLUE);        myGLCD.drawPixel(column, output);
-  myGLCD.setColor(RED);         myGLCD.drawPixel(column, input);
+  myGLCD.setColor(GREEN);       myGLCD.drawPixel(column, setpoint);   myGLCD.drawPixel(column, 1+setpoint);
+  myGLCD.setColor(BLUE);        myGLCD.drawPixel(column, output);     myGLCD.drawPixel(column, 1+output);
+  myGLCD.setColor(RED);         myGLCD.drawPixel(column, input);      myGLCD.drawPixel(column, 1+input);
 
   if (column == dispX-1)  column=0;
   else                    column++;
