@@ -514,23 +514,23 @@ class Pid : public PID {
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
 
-    void increaseKp (void) {kp++;       updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (void) {kp--;       updateTuning(); topTempControl.setControl.draw(kp);};
+    void increaseKp (void) {kp+=0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
+    void decreaseKp (void) {kp-=0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
     void increaseKi (void) {ki+=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
     void decreaseKi (void) {ki-=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
     void increaseKd (void) {kd++;       updateTuning(); bottomTempControl.setControl.draw(kd);};
     void decreaseKd (void) {kd--;       updateTuning(); bottomTempControl.setControl.draw(kd);};
 
-    void increaseMinOutput    (void) {minOutput+=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
-    void decreaseMinOutput    (void) {minOutput-=10;    updateOutputLimits(); topTempControl.setControl.draw(minOutput);};
-    void increaseStartOutput  (void) {startOutput+=10;  updateOutputLimits(); conveyorControl.setControl.draw(startOutput);};
-    void decreaseStartOutput  (void) {startOutput-=10;  updateOutputLimits(); conveyorControl.setControl.draw(startOutput);};
-    void increaseMaxOutput    (void) {maxOutput+=10;    updateOutputLimits(); bottomTempControl.setControl.draw(maxOutput);};
-    void decreaseMaxOutput    (void) {maxOutput-=10;    updateOutputLimits(); bottomTempControl.setControl.draw(maxOutput);};
+    void increaseMinOutput    (void) {minOutput+=10; maxOutput+=10; updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
+    void decreaseMinOutput    (void) {minOutput-=10; maxOutput-=10; updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
+    void increaseStartOutput  (void) {startOutput+=10;              updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
+    void decreaseStartOutput  (void) {startOutput-=10;              updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
+    void increaseMaxOutput    (void) {maxOutput+=10;                updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
+    void decreaseMaxOutput    (void) {maxOutput-=10;                updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
 
     void saveParameters (void) {
       PidEEPROM pid;
-      pid.kp = kp;
+      pid.kp = kp*10;
       pid.ki = ki*1000;
       pid.kd = kd;
       pid.minOutput   = minOutput;
@@ -541,7 +541,7 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp;
+      if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp/10.0;
       if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/1000.0;
       if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd;
       if (pid.minOutput   >= 0 and pid.minOutput   < 2000)   minOutput   = pid.minOutput;
