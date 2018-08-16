@@ -60,7 +60,7 @@
   #define ENCODER_PIN_1               20
   #define ENCODER_PIN_2               21
   Encoder myEncoder(ENCODER_PIN_1, ENCODER_PIN_2);
-  #define STEPS_PER_REVOLUTION        200
+  #define STEPS_PER_REVOLUTION        100
   #define ENCODER_REBOUND_MS          20
   #define MAX_STEPS_PER_MS_OF_SYSTEM  0.022
 
