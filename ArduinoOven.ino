@@ -60,12 +60,14 @@
   #define ENCODER_PIN_1               20
   #define ENCODER_PIN_2               21
   Encoder myEncoder(ENCODER_PIN_1, ENCODER_PIN_2);
-  #define STEPS_PER_REVOLUTION        100
+  #define STEPS_PER_REVOLUTION        400
   #define ENCODER_REBOUND_MS          20
-  #define MAX_STEPS_PER_MS_OF_SYSTEM  0.022
 
-// Oven Specific Parameters
-  #define STEPS_TO_CROSS_OVEN     STEPS_PER_REVOLUTION * (7+1/3)
+// Arduino and Oven Specific Parameters
+  #define CONVEYOR_MAX_STEPS_PER_MS             STEPS_PER_REVOLUTION / 8000.0 // 0.05
+  #define STEPS_TO_CROSS_OVEN                   STEPS_PER_REVOLUTION * (7+1/3)
+  #define ARDUINO_TIME_CORRECTION               1.111
+  #define STEPS_TO_CROSS_OVEN__TIME_CORRECTED   STEPS_TO_CROSS_OVEN * ARDUINO_TIME_CORRECTION
 
 // PID
   #include <PID_v1.h>
@@ -1438,7 +1440,7 @@ void computeConveyorPID (void)
   long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
   double stepsPerMs_real = (double)encoderSteps_counted / encoderStepsCounter_duration;
   double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
-  double stepsPerMs_goal = STEPS_TO_CROSS_OVEN / msToCrossOven_goal;
+  double stepsPerMs_goal = STEPS_TO_CROSS_OVEN__TIME_CORRECTED / msToCrossOven_goal;
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
@@ -1458,7 +1460,7 @@ void computeConveyorPID (void)
   last_encoderLastStepTime = encoderLastStepTime;
   if (encoderSteps_counted == 0) conveyorControl.sensors.value = 9999;
   else conveyorControl.sensors.value = STEPS_TO_CROSS_OVEN / 60000.0 / encoderSteps_counted * encoderStepsCounter_duration;
-  if (stepsPerMs_real > MAX_STEPS_PER_MS_OF_SYSTEM)  conveyorControl.sensors.showError("Too fast, Impossible");
+  if (stepsPerMs_real > CONVEYOR_MAX_STEPS_PER_MS)  conveyorControl.sensors.showError("Too fast, Impossible");
 }
 
 void drawGraphPoint()
