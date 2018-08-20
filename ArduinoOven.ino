@@ -71,19 +71,19 @@
 
 // PID
   #include <PID_v1.h>
-  #define PID_MANUAL_THRESHOLD  30
+  #define PID_MANUAL_THRESHOLD  50
   // Top
-    #define TOP_PID_KP          10
-    #define TOP_PID_KI          1
-    #define TOP_PID_KD          5
+    #define TOP_PID_KP          5
+    #define TOP_PID_KI          0.002
+    #define TOP_PID_KD          1
   // Conveyor
     #define CONVEYOR_PID_KP     3
     #define CONVEYOR_PID_KI     0.2
     #define CONVEYOR_PID_KD     0
   // Bottom
-    #define BOTTOM_PID_KP       10
-    #define BOTTOM_PID_KI       1
-    #define BOTTOM_PID_KD       5
+    #define BOTTOM_PID_KP       5
+    #define BOTTOM_PID_KI       0.001
+    #define BOTTOM_PID_KD       1
   // min/max PWM width in uS
     #define TOP_PID_MIN_WIDTH       780
     #define TOP_PID_MAX_WIDTH       1200
