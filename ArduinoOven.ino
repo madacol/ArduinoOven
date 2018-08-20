@@ -189,7 +189,7 @@
   long timeTouchStarted, timeSinceTouchStarted, lastTimeSinceTouchStarted;
 
 // Encoder
-  long  last_encoderLastStepTime;
+  long  last_computeConveyorTime;
 
 // Graph
   double *inputGraph, *setpointGraph, *outputGraph;
@@ -1420,8 +1420,8 @@ void computeConveyorPID (void)
   noInterrupts();
     long encoderSteps_counted = myEncoder.read();
     myEncoder.write(0);
-    long encoderLastStepTime = millis();
   interrupts();
+  long computeConveyorTime = millis();
   static int oldSetcontrolValue;
   static bool isReverse;
   if (conveyorControl.setControl.value != oldSetcontrolValue)
@@ -1437,7 +1437,7 @@ void computeConveyorPID (void)
     oldSetcontrolValue = conveyorControl.setControl.value;
   }
   if (isReverse)  encoderSteps_counted = -encoderSteps_counted;
-  long encoderStepsCounter_duration = encoderLastStepTime - last_encoderLastStepTime;
+  long encoderStepsCounter_duration = computeConveyorTime - last_computeConveyorTime;
   double stepsPerMs_real = (double)encoderSteps_counted / encoderStepsCounter_duration;
   double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
   double stepsPerMs_goal = STEPS_TO_CROSS_OVEN__TIME_CORRECTED / msToCrossOven_goal;
@@ -1457,9 +1457,8 @@ void computeConveyorPID (void)
   conveyorPID.setpoint = 0;
   conveyorPID.Compute();
   analogWrite(CONVEYOR_L298N_PWM, conveyorPID.output);
-  last_encoderLastStepTime = encoderLastStepTime;
-  if (encoderSteps_counted == 0) conveyorControl.sensors.value = 9999;
-  else conveyorControl.sensors.value = STEPS_TO_CROSS_OVEN / 60000.0 / encoderSteps_counted * encoderStepsCounter_duration;
+  last_computeConveyorTime = computeConveyorTime;
+  conveyorControl.sensors.value = int(conveyorPID.input);
   if (stepsPerMs_real > CONVEYOR_MAX_STEPS_PER_MS)  conveyorControl.sensors.showError("Too fast, Impossible");
 }
 
@@ -1567,6 +1566,10 @@ void setup()
     topTempControl.sensors.value2Avg    = topTempControl.sensors.getAvgTemp   ( topTempControl.sensors.values2);
     bottomTempControl.sensors.value1Avg = bottomTempControl.sensors.getAvgTemp( bottomTempControl.sensors.values1);
     bottomTempControl.sensors.value2Avg = bottomTempControl.sensors.getAvgTemp( bottomTempControl.sensors.values2);
+
+    // Encoder
+      myEncoder.write(0);
+      last_computeConveyorTime = millis();
 }
 
 
