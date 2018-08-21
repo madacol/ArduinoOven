@@ -503,6 +503,9 @@ class Pid : public PID {
       PID(&input, &output, &setpoint, _kp, _ki, _kd, pOn, DIR)
     {};
 
+    int minOutputGraph(void) { return (GetDirection() == DIRECT) ? minOutput : maxOutput; };
+    int maxOutputGraph(void) { return (GetDirection() == DIRECT) ? maxOutput : minOutput; };
+
     void updateTuning(void) {SetTunings(kp,ki,kd);};
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
@@ -855,8 +858,8 @@ void showTopPIDGraph (void) {
   outputGraph               = &topPID.output;
   minInputSetpointGraph     = topPID.setpoint - TOP_TEMP_GRAPH_RANGE;
   maxInputSetpointGraph     = topPID.setpoint + TOP_TEMP_GRAPH_RANGE;
-  minOutputGraph            = topPID.minOutput;
-  maxOutputGraph            = topPID.maxOutput;
+  minOutputGraph            = topPID.minOutputGraph();
+  maxOutputGraph            = topPID.maxOutputGraph();
   state                     = SHOWING_GRAPH;
   drawEverything();
 }
@@ -866,8 +869,8 @@ void showBottomPIDGraph (void) {
   outputGraph               = &bottomPID.output;
   minInputSetpointGraph     = bottomPID.setpoint - BOTTOM_TEMP_GRAPH_RANGE;
   maxInputSetpointGraph     = bottomPID.setpoint + BOTTOM_TEMP_GRAPH_RANGE;
-  minOutputGraph            = bottomPID.minOutput;
-  maxOutputGraph            = bottomPID.maxOutput;
+  minOutputGraph            = bottomPID.minOutputGraph();
+  maxOutputGraph            = bottomPID.maxOutputGraph();
   state                     = SHOWING_GRAPH;
   drawEverything();
 }
@@ -877,8 +880,8 @@ void showConveyorPIDGraph (void) {
   outputGraph               = &conveyorPID.output;
   minInputSetpointGraph     = conveyorPID.setpoint - CONVEYOR_GRAPH_RANGE;
   maxInputSetpointGraph     = conveyorPID.setpoint + CONVEYOR_GRAPH_RANGE;
-  minOutputGraph            = conveyorPID.minOutput;
-  maxOutputGraph            = conveyorPID.maxOutput;
+  minOutputGraph            = conveyorPID.minOutputGraph();
+  maxOutputGraph            = conveyorPID.maxOutputGraph();
   state                     = SHOWING_GRAPH;
   drawEverything();
 }
