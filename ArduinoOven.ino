@@ -207,9 +207,18 @@
 String stringifyDouble (double number) {
   char buffer[6];
   if (number == int(number))              return String(int(number));
-  else if (number > 0 and number < 1)     return String(dtostrf(number,4,3, buffer)).substring(1);
+  else if (number > 0) {
+         if (number < 0.1)                return String(dtostrf(number,5,4, buffer)).substring(1);
+    else if (number < 1)                  return String(dtostrf(number,4,3, buffer)).substring(1);
+    else                                  return dtostrf(number,1,1, buffer);
+  }
   else if (number > -1 and number < 10)   return dtostrf(number,4,2, buffer);
   else                                    return dtostrf(number,1,1, buffer);
+}
+
+byte getFontSize(String number_str, byte normalFontSize) {
+  byte number_length = number_str.length();
+  return (number_length <= 3) ? normalFontSize : ( normalFontSize - (number_length-3) );
 }
 
 void debug(String str) {
@@ -302,14 +311,8 @@ class SetControl : public Block {
       drawBackground();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         String number_str = stringifyDouble(number);
-        if (number_str.length() <= 3) {
-          myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE);
-          myGLCD.print(number_str, startX+12, startY+11);
-        }
-        else {
-          myGLCD.setTextSize(SET_CONTROL_TEXT_SIZE-1);
-          myGLCD.print(number_str, startX+6, startY+14);
-        }
+        myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
+        myGLCD.print(number_str, startX+6, startY+11);
     };
     void draw(void) {draw(value);};
 };
@@ -452,14 +455,8 @@ class Control : public Coordinates {
       sensors.draw();
     };
     virtual void draw(void) {draw(setControl.value);};
-    virtual void decreaseSetControl(void) {
-      setControl.value-=0.1;
-      setControl.draw();
-    }
-    virtual void increaseSetControl(void) {
-      setControl.value+=0.1;
-      setControl.draw();
-    }
+    virtual void decreaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale*0.1;  setControl.draw();}
+    virtual void increaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale*0.1;  setControl.draw();}
 } conveyorControl;
 
 class TempControl : public Control {
@@ -486,14 +483,8 @@ class TempControl : public Control {
       sensors.draw();
     };
     void draw(void) {draw(setControl.value);};
-    void decreaseSetControl(void) {
-      setControl.value--;
-      setControl.draw();
-    }
-    void increaseSetControl(void) {
-      setControl.value++;
-      setControl.draw();
-    }
+    void decreaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale;   setControl.draw();}
+    void increaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale;   setControl.draw();}
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1, PIN_CS_TOP_TEMP_SENSOR_2),
   bottomTempControl(PIN_CS_BOTTOM_TEMP_SENSOR_1, PIN_CS_BOTTOM_TEMP_SENSOR_2);
@@ -516,25 +507,25 @@ class Pid : public PID {
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
 
-    void increaseKp (void) {kp+=0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (void) {kp-=0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (void) {ki+=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (void) {ki-=0.001;  updateTuning(); conveyorControl.setControl.draw(ki);};
-    void increaseKd (void) {kd++;       updateTuning(); bottomTempControl.setControl.draw(kd);};
-    void decreaseKd (void) {kd--;       updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void increaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp+=scale*0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
+    void decreaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp-=scale*0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
+    void increaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki+=scale*0.0001; updateTuning(); conveyorControl.setControl.draw(ki);};
+    void decreaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki-=scale*0.0001; updateTuning(); conveyorControl.setControl.draw(ki);};
+    void increaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd+=scale*0.1;    updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void decreaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd-=scale*0.1;    updateTuning(); bottomTempControl.setControl.draw(kd);};
 
-    void increaseMinOutput    (void) {minOutput+=10; maxOutput+=10; updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
-    void decreaseMinOutput    (void) {minOutput-=10; maxOutput-=10; updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
-    void increaseStartOutput  (void) {startOutput+=10;              updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
-    void decreaseStartOutput  (void) {startOutput-=10;              updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
-    void increaseMaxOutput    (void) {maxOutput+=10;                updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
-    void decreaseMaxOutput    (void) {maxOutput-=10;                updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
+    void increaseMinOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   minOutput+=  scale*1;   updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
+    void decreaseMinOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   minOutput-=  scale*1;   updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
+    void increaseStartOutput (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   startOutput+=scale*1;   updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
+    void decreaseStartOutput (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   startOutput-=scale*1;   updateOutputLimits();   conveyorControl.setControl.draw   (startOutput);};
+    void increaseMaxOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   maxOutput+=  scale*1;   updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
+    void decreaseMaxOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   maxOutput-=  scale*1;   updateOutputLimits();   bottomTempControl.setControl.draw (maxOutput);};
 
     void saveParameters (void) {
       PidEEPROM pid;
       pid.kp = kp*10;
-      pid.ki = ki*1000;
-      pid.kd = kd;
+      pid.ki = ki*10000;
+      pid.kd = kd*10;
       pid.minOutput   = minOutput;
       pid.startOutput = startOutput;
       pid.maxOutput   = maxOutput;
@@ -544,8 +535,8 @@ class Pid : public PID {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
       if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp/10.0;
-      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/1000.0;
-      if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd;
+      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/10000.0;
+      if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd/10.0;
       if (pid.minOutput   >= 0 and pid.minOutput   < 2000)   minOutput   = pid.minOutput;
       if (pid.startOutput >= 0 and pid.startOutput < 2000)   startOutput = pid.startOutput;
       if (pid.maxOutput   >= 0 and pid.maxOutput   < 2000)   maxOutput   = pid.maxOutput;
@@ -937,16 +928,16 @@ void profileLongClick (byte id=0) {
   if (state == SHOWING_GRAPH) controlSetpoints();  else  saveProfile(id);
 }
 
-void topMinusButtonClick (void) {
+void topMinusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               topTempControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.decreaseKp(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKp(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKp(); break;
+    case CONTROLLING_SETPOINTS:               topTempControl.decreaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.decreaseKp(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKp(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKp(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseMinOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseMinOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseMinOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseMinOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseMinOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseMinOutput(event); break;
   }
 }
 void topSetcontrolClick (void) {
@@ -973,16 +964,16 @@ void topSetcontrolLongClick (void) {
     case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    controlTopOutputLimits(); break;
   }
 }
-void topPlusButtonClick (void) {
+void topPlusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               topTempControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.increaseKp(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKp(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKp(); break;
+    case CONTROLLING_SETPOINTS:               topTempControl.increaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.increaseKp(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKp(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKp(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseMinOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseMinOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseMinOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseMinOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseMinOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseMinOutput(event); break;
   }
 }
 void topSensorClick (void) {
@@ -1009,16 +1000,16 @@ void topSensorLongClick (void) {
     case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    controlTopPID(); break;
   }
 }
-void conveyorMinusButtonClick (void) {
+void conveyorMinusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               conveyorControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.decreaseKi(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKi(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKi(); break;
+    case CONTROLLING_SETPOINTS:               conveyorControl.decreaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.decreaseKi(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKi(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKi(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseStartOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseStartOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseStartOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseStartOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseStartOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseStartOutput(event); break;
   }
 }
 void conveyorSetcontrolClick (void) {
@@ -1045,16 +1036,16 @@ void conveyorSetcontrolLongClick (void) {
     case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    controlConveyorOutputLimits(); break;
   }
 }
-void conveyorPlusButtonClick (void) {
+void conveyorPlusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               conveyorControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.increaseKi(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKi(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKi(); break;
+    case CONTROLLING_SETPOINTS:               conveyorControl.increaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.increaseKi(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKi(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKi(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseStartOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseStartOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseStartOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseStartOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseStartOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseStartOutput(event); break;
   }
 }
 void conveyorSensorClick (void) {
@@ -1081,16 +1072,16 @@ void conveyorSensorLongClick (void) {
     case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    controlConveyorPID(); break;
   }
 }
-void bottomMinusButtonClick (void) {
+void bottomMinusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               bottomTempControl.decreaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.decreaseKd(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKd(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKd(); break;
+    case CONTROLLING_SETPOINTS:               bottomTempControl.decreaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.decreaseKd(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.decreaseKd(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.decreaseKd(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseMaxOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseMaxOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseMaxOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.decreaseMaxOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.decreaseMaxOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.decreaseMaxOutput(event); break;
   }
 }
 void bottomSetcontrolClick (void) {
@@ -1117,16 +1108,16 @@ void bottomSetcontrolLongClick (void) {
     case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.saveParameters(); break;
   }
 }
-void bottomPlusButtonClick (void) {
+void bottomPlusButtonClick (byte event) {
   switch (state) {
-    case CONTROLLING_SETPOINTS:               bottomTempControl.increaseSetControl(); break;
-    case CONTROLLING_TOP_PID:                 topPID.increaseKd(); break;
-    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKd(); break;
-    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKd(); break;
+    case CONTROLLING_SETPOINTS:               bottomTempControl.increaseSetControl(event); break;
+    case CONTROLLING_TOP_PID:                 topPID.increaseKd(event); break;
+    case CONTROLLING_CONVEYOR_PID:            conveyorPID.increaseKd(event); break;
+    case CONTROLLING_BOTTOM_PID:              bottomPID.increaseKd(event); break;
     case SHOWING_GRAPH:                       controlSetpoints(); break;
-    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseMaxOutput(); break;
-    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseMaxOutput(); break;
-    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseMaxOutput(); break;
+    case CONTROLLING_TOP_OUTPUT_LIMITS:       topPID.increaseMaxOutput(event); break;
+    case CONTROLLING_CONVEYOR_OUTPUT_LIMITS:  conveyorPID.increaseMaxOutput(event); break;
+    case CONTROLLING_BOTTOM_OUTPUT_LIMITS:    bottomPID.increaseMaxOutput(event); break;
   }
 }
 void bottomSensorClick (void) {
@@ -1223,10 +1214,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     if (tp.x > topTempControl.minusButton.startX+DEAD_ZONE  &&  tp.x < topTempControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      topMinusButtonClick(); break;
+        case CLICK_EVENT :      topMinusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       topMinusButtonClick(); break;
-        case LONG_HOLD_EVENT :  topMinusButtonClick(); break;
+        case HOLD_EVENT :       topMinusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  topMinusButtonClick(event); break;
       }
     }
     else if (tp.x > topTempControl.setControl.startX+DEAD_ZONE  &&  tp.x < topTempControl.setControl.endX-DEAD_ZONE)
@@ -1241,10 +1232,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     else if (tp.x > topTempControl.plusButton.startX+DEAD_ZONE  &&  tp.x < topTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      topPlusButtonClick(); break;
+        case CLICK_EVENT :      topPlusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       topPlusButtonClick(); break;
-        case LONG_HOLD_EVENT :  topPlusButtonClick(); break;
+        case HOLD_EVENT :       topPlusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  topPlusButtonClick(event); break;
       }
     }
     else if (tp.x > topTempControl.sensors.startX+DEAD_ZONE  &&  tp.x < topTempControl.sensors.endX-DEAD_ZONE)
@@ -1262,10 +1253,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     if (tp.x > conveyorControl.minusButton.startX+DEAD_ZONE  &&  tp.x < conveyorControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      conveyorMinusButtonClick(); break;
+        case CLICK_EVENT :      conveyorMinusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       conveyorMinusButtonClick(); break;
-        case LONG_HOLD_EVENT :  conveyorMinusButtonClick(); break;
+        case HOLD_EVENT :       conveyorMinusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  conveyorMinusButtonClick(event); break;
       }
     }
     else if (tp.x > conveyorControl.setControl.startX+DEAD_ZONE  &&  tp.x < conveyorControl.setControl.endX-DEAD_ZONE)
@@ -1280,10 +1271,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     else if (tp.x > conveyorControl.plusButton.startX+DEAD_ZONE  &&  tp.x < conveyorControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      conveyorPlusButtonClick(); break;
+        case CLICK_EVENT :      conveyorPlusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       conveyorPlusButtonClick(); break;
-        case LONG_HOLD_EVENT :  conveyorPlusButtonClick(); break;
+        case HOLD_EVENT :       conveyorPlusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  conveyorPlusButtonClick(event); break;
       }
     }
     else if (tp.x > conveyorControl.sensors.startX+DEAD_ZONE  &&  tp.x < conveyorControl.sensors.endX-DEAD_ZONE)
@@ -1301,10 +1292,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     if (tp.x > bottomTempControl.minusButton.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.minusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      bottomMinusButtonClick(); break;
+        case CLICK_EVENT :      bottomMinusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       bottomMinusButtonClick(); break;
-        case LONG_HOLD_EVENT :  bottomMinusButtonClick(); break;
+        case HOLD_EVENT :       bottomMinusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  bottomMinusButtonClick(event); break;
       }
     }
     else if (tp.x > bottomTempControl.setControl.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.setControl.endX-DEAD_ZONE)
@@ -1319,10 +1310,10 @@ void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
     else if (tp.x > bottomTempControl.plusButton.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.plusButton.endX-DEAD_ZONE)
     {
       switch (event) {
-        case CLICK_EVENT :      bottomPlusButtonClick(); break;
+        case CLICK_EVENT :      bottomPlusButtonClick(event); break;
         //case LONG_CLICK_EVENT : break;
-        case HOLD_EVENT :       bottomPlusButtonClick(); break;
-        case LONG_HOLD_EVENT :  bottomPlusButtonClick(); break;
+        case HOLD_EVENT :       bottomPlusButtonClick(event); break;
+        case LONG_HOLD_EVENT :  bottomPlusButtonClick(event); break;
       }
     }
     else if (tp.x > bottomTempControl.sensors.startX+DEAD_ZONE  &&  tp.x < bottomTempControl.sensors.endX-DEAD_ZONE)
