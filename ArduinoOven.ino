@@ -16,7 +16,7 @@
   #define  DISPLAY_HEIGHT   240
   #define  ORIENTATION  1
   #include <Adafruit_GFX.h>
-  #include <UTFTGLUE.h>            // Modified file MCUFRIEND_kbv.h: Enabled #define SUPPORT_8347D
+  #include <UTFTGLUE.h>            // Modified file MCUFRIEND_kbv.cpp: Enabled #define SUPPORT_8347D
   UTFTGLUE myGLCD(0x9341, A2, A1, A3, A4, A0);
   extern uint8_t SmallFont[]; // Declare which fonts we will be using
   // Colors - RGB565 color picker -> https://ee-programming-notepad.blogspot.com.co/2016/10/16-bit-color-generator-picker.html
@@ -37,7 +37,7 @@
     #define SENSOR_TEXT_SIZE        3
 
 // Thermocouples
-  #include <max6675.h>
+  #include <max6675.h>      // https://github.com/SirUli/MAX6675
   #include <SPI.h>
   #define PIN_CS_TOP_TEMP_SENSOR_1     23
   #define PIN_CS_TOP_TEMP_SENSOR_2     25
@@ -103,7 +103,7 @@
   #define GRAPH_GRID_HEIGHT         DISPLAY_HEIGHT / 10
 
 // TouchScreen
-  #include <TouchScreen.h>
+  #include <TouchScreen.h>      // Adafruit_TouchScreen
   #define YP A2   //A3 for ILI9320
   #define YM 6    //9
   #define XM A1
