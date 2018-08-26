@@ -4,8 +4,12 @@
   #define DEBUG_TOP_PID
   #define DEBUG_BOTTOM_PID
   #define DEBUG_SENSOR_TEMP
-#endif
   #define DEBUG_SENSOR_SHOW_ERROR
+  #define DEBUG_TOP_PID_GRAPH
+#endif
+  #define DEBUG_BOTTOM_PID_GRAPH
+
+  //#define SERIAL_COMMANDER
 
 // Display
   #define  DISPLAY_WIDTH    320
@@ -738,6 +742,22 @@ void showPIDs(Pid pid)
   Serial.println();
 }
 
+void serialGraphPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
+void serialGraphPIDs(Pid pid)
+{
+  int input    = pid.input;
+  int setpoint = pid.setpoint;
+  int output   = map(pid.output,  pid.minOutputGraph(),  pid.maxOutputGraph(),  101,  399);
+
+  Serial.print(output);     Serial.print(" ");
+  Serial.print(input);      Serial.print(" ");
+  Serial.print(setpoint);   Serial.print(" ");
+  Serial.print(100);        Serial.print(" ");
+  Serial.print(400);        Serial.print(" ");
+  Serial.println();
+}
+
+
 void drawProfiles(void)
 {
   for (byte i=0; i<profilesSize; i++)
@@ -1383,6 +1403,9 @@ void computeTopPID (void)
           #if defined DEBUG_TOP_PID
             showPIDs(bottomPID);
           #endif
+          #if defined DEBUG_TOP_PID_GRAPH
+            serialGraphPIDs(topPID);
+          #endif
   topServo.writeMicroseconds(topPID.output);
 }
 void computeBottomPID (void)
@@ -1406,6 +1429,9 @@ void computeBottomPID (void)
   }
           #if defined DEBUG_BOTTOM_PID
             showPIDs(bottomPID);
+          #endif
+          #if defined DEBUG_BOTTOM_PID_GRAPH
+            serialGraphPIDs(bottomPID);
           #endif
   bottomServo.writeMicroseconds(bottomPID.output);
 }
