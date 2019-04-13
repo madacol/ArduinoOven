@@ -64,12 +64,13 @@
   #define ENCODER_PIN_1               20
   #define ENCODER_PIN_2               21
   Encoder myEncoder(ENCODER_PIN_1, ENCODER_PIN_2);
-  #define STEPS_PER_REVOLUTION        400
   #define ENCODER_REBOUND_MS          20
 
 // Arduino and Oven Specific Parameters
-  #define CONVEYOR_MAX_STEPS_PER_MS             STEPS_PER_REVOLUTION / 8000.0 // 0.05
-  #define STEPS_TO_CROSS_OVEN                   STEPS_PER_REVOLUTION * (7+1/3)
+  #define STEPS_PER_GEAR_REVOLUTION             400
+  #define GEAR_REVOLUTIONS_TO_CROSS_OVEN        7+1/3
+  #define CONVEYOR_MAX_STEPS_PER_MS             STEPS_PER_GEAR_REVOLUTION / 8000.0 // 0.05
+  #define STEPS_TO_CROSS_OVEN                   STEPS_PER_GEAR_REVOLUTION * GEAR_REVOLUTIONS_TO_CROSS_OVEN
   #define ARDUINO_TIME_CORRECTION               1.111
   #define STEPS_TO_CROSS_OVEN__TIME_CORRECTED   STEPS_TO_CROSS_OVEN * ARDUINO_TIME_CORRECTION
 
@@ -1529,7 +1530,12 @@ void setup()
     bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
     conveyorControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
     topTempControl.setCoordinates( isOutline, conveyorControl.startY - gridHeight );
-    calculateProfilesProperties();
+
+  // Load EEPROM
+    calculateProfilesProperties();    // Also set coordinates
+    topPID.loadParameters();
+    bottomPID.loadParameters();
+    conveyorPID.loadParameters();
 
   // Servos
     topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
@@ -1539,12 +1545,13 @@ void setup()
     pinMode(CONVEYOR_L298N_DIR2_PIN , OUTPUT);
 
   // Relays
-    pinMode(VALVE_PIN, OUTPUT);
-    digitalWrite(VALVE_PIN, LOW);
-    pinMode(SPARK_PIN, OUTPUT);
-    digitalWrite(SPARK_PIN, LOW);
-    delay(SPARK_IGNITION_TIME);     // Turn on Sparks for SPARK_IGNITION_TIME miliseconds
-    digitalWrite(SPARK_PIN, HIGH);
+    // Turn ON ElectroValve
+      pinMode(VALVE_PIN, OUTPUT);   digitalWrite(VALVE_PIN, LOW);
+    // Turn ON Sparks for SPARK_IGNITION_TIME miliseconds
+      pinMode(SPARK_PIN, OUTPUT);
+      digitalWrite(SPARK_PIN, LOW);
+      delay(SPARK_IGNITION_TIME);
+      digitalWrite(SPARK_PIN, HIGH);
 
   controlSetpoints();
   loadProfile(0);
@@ -1564,15 +1571,12 @@ void setup()
     drawGraphPointThread.setInterval(DRAW_GRAPH_POINT_INTERVAL);
 
   // PIDs
-    topPID.loadParameters();
     topPID.SetSampleTime(TOP_PID_INTERVAL);
     topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
     topPID.SetMode(AUTOMATIC);
-    bottomPID.loadParameters();
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
     bottomPID.SetMode(AUTOMATIC);
-    conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetMode(AUTOMATIC);
 
