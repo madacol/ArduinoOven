@@ -375,14 +375,11 @@ class TempSensors : public Block {
 
       if (!isnan(value1_tmp)) {
         double value1diff = value1_tmp - value1Avg;
-        if ( abs(value1diff) <= MAX_TEMP_SENSOR_ERROR )
-          values1[counter] = value1_tmp;
-        else {
-          byte maxError1 = (value1diff < 0) ? -MAX_TEMP_SENSOR_ERROR : MAX_TEMP_SENSOR_ERROR;
-          values1[counter] = value1Avg + maxError1;
-          showError(String(value1_tmp));
-        }
-      } else values1[counter] = value1Avg;
+        if      ( value1diff >  MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
+        else if ( value1diff < -MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
+        else values1[counter] = value1_tmp;
+      }
+      else values1[counter] = value1Avg;
       value1Avg = getAvgTemp(values1);
 
       double value2_tmp = Sensor2.readCelsius();
@@ -393,14 +390,11 @@ class TempSensors : public Block {
 
       if (!isnan(value2_tmp)) {
         double value2diff = value2_tmp - value2Avg;
-        if ( abs(value2diff) <= MAX_TEMP_SENSOR_ERROR )
-          values2[counter] = value2_tmp;
-        else {
-          byte maxError2 = (value2diff < 0) ? -MAX_TEMP_SENSOR_ERROR : MAX_TEMP_SENSOR_ERROR;
-          values2[counter] = value2Avg + maxError2;
-          showError(String(value2_tmp));
-        }
-      } else values2[counter] = value2Avg;
+        if      ( value2diff >  MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
+        else if ( value2diff < -MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
+        else values2[counter] = value2_tmp;
+      }
+      else values2[counter] = value2Avg;
       value2Avg = getAvgTemp(values2);
 
       if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
