@@ -460,7 +460,6 @@ class Control : public Coordinates {
 
 class TempControl : public Control {
   public:
-    SetControl setControl;
     TempSensors sensors;
     TempControl(byte pinSensor1CS,byte pinSensor2CS):
       sensors(pinSensor1CS, pinSensor2CS)
@@ -485,8 +484,12 @@ class TempControl : public Control {
     void decreaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale;   setControl.draw();}
     void increaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale;   setControl.draw();}
 // TempControl(SensorCS1, SensorCS2)
-} topTempControl(PIN_CS_TOP_TEMP_SENSOR_1, PIN_CS_TOP_TEMP_SENSOR_2),
-  bottomTempControl(PIN_CS_BOTTOM_TEMP_SENSOR_1, PIN_CS_BOTTOM_TEMP_SENSOR_2);
+} topTempControl(PIN_CS_TOP_TEMP_SENSOR_1,
+                 PIN_CS_TOP_TEMP_SENSOR_2
+                 ),
+  bottomTempControl(PIN_CS_BOTTOM_TEMP_SENSOR_1,
+                    PIN_CS_BOTTOM_TEMP_SENSOR_2
+                    );
 
 class Pid : public PID {
   public:
@@ -1441,14 +1444,9 @@ void computeConveyorPID (void)
   static bool isReverse;
   if (conveyorControl.setControl.value != oldSetcontrolValue)
   {
-    if (conveyorControl.setControl.value < 0) {
-      digitalWrite(CONVEYOR_L298N_DIR1_PIN, HIGH), digitalWrite(CONVEYOR_L298N_DIR2_PIN, LOW);
-      isReverse = true;
-    }
-    else {
-      digitalWrite(CONVEYOR_L298N_DIR1_PIN, LOW), digitalWrite(CONVEYOR_L298N_DIR2_PIN, HIGH);
-      isReverse = false;
-    }
+    isReverse = ( conveyorControl.setControl.value < 0 );
+    digitalWrite(CONVEYOR_L298N_DIR1_PIN, (isReverse?HIGH:LOW) );
+    digitalWrite(CONVEYOR_L298N_DIR2_PIN, (isReverse?LOW:HIGH) );
     oldSetcontrolValue = conveyorControl.setControl.value;
   }
   if (isReverse)  encoderSteps_counted = -encoderSteps_counted;
