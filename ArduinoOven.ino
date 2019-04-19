@@ -766,15 +766,15 @@ void drawProfiles(void)
 
 void drawDivisions(void)
 {
-  if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
   myGLCD.setColor(WHITE);
-    myGLCD.drawLine(gridWidth-1+isOutline  , dispY-1                   , gridWidth-1+isOutline  , 0);
-    myGLCD.drawLine(gridWidth*2-1+isOutline, 0                         , gridWidth*2-1+isOutline, dispY-gridHeight*3);
-    myGLCD.drawLine(gridWidth*3-1+isOutline, dispY-1                   , gridWidth*3-1+isOutline, 0);
-    myGLCD.drawLine(gridWidth*4-1+isOutline, dispY-1                   , gridWidth*4-1+isOutline, 0);
-    myGLCD.drawLine(0                      , topTempControl.startY-1   , dispX-1                , topTempControl.startY-1);
-    myGLCD.drawLine(0                      , conveyorControl.startY-1  , dispX-1                , conveyorControl.startY-1);
-    myGLCD.drawLine(0                      , bottomTempControl.startY-1, dispX-1                , bottomTempControl.startY-1);
+  if (isOutline) {myGLCD.drawRect(0,0,dispX-1,dispY-1);}
+  myGLCD.drawLine(gridWidth-1+isOutline  , dispY-1                   , gridWidth-1+isOutline  , 0);
+  myGLCD.drawLine(gridWidth*2-1+isOutline, 0                         , gridWidth*2-1+isOutline, dispY-gridHeight*3);
+  myGLCD.drawLine(gridWidth*3-1+isOutline, dispY-1                   , gridWidth*3-1+isOutline, 0);
+  myGLCD.drawLine(gridWidth*4-1+isOutline, dispY-1                   , gridWidth*4-1+isOutline, 0);
+  myGLCD.drawLine(0                      , topTempControl.startY-1   , dispX-1                , topTempControl.startY-1);
+  myGLCD.drawLine(0                      , conveyorControl.startY-1  , dispX-1                , conveyorControl.startY-1);
+  myGLCD.drawLine(0                      , bottomTempControl.startY-1, dispX-1                , bottomTempControl.startY-1);
 }
 
 void drawEverything(void)
