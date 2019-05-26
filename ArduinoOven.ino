@@ -1,13 +1,11 @@
 //#define DEBUG
 #if defined DEBUG
   #define DEBUG_CONVEYOR_PID
-  #define DEBUG_TOP_PID
-  #define DEBUG_BOTTOM_PID
+  #define DEBUG_PID
   #define DEBUG_SENSOR_TEMP
   #define DEBUG_SENSOR_SHOW_ERROR
-  #define DEBUG_TOP_PID_GRAPH
+  #define DEBUG_PID_GRAPH
 #endif
-  #define DEBUG_BOTTOM_PID_GRAPH
 
   //#define SERIAL_COMMANDER
 
@@ -338,7 +336,14 @@ class PlusButton : public Block {
     }
 };
 
-class TempSensors : public Block {
+class Sensors : public Block {
+  public:
+  virtual void draw(void){};
+  virtual void update(void){};
+  virtual double read(void){};
+};
+
+class TempSensors : public Sensors {
   public:
     double value1Avg;
     double value2Avg;
@@ -367,39 +372,7 @@ class TempSensors : public Block {
         myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
       */
     };
-    void update(void) {
-      double value1_tmp = Sensor1.readCelsius();
 
-              #if defined DEBUG_SENSOR_TEMP
-                Serial.print("-");        Serial.print(value1_tmp);        Serial.print("-");
-              #endif
-
-      if (!isnan(value1_tmp)) {
-        double value1diff = value1_tmp - value1Avg;
-        if      ( value1diff >  MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
-        else if ( value1diff < -MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
-        else values1[counter] = value1_tmp;
-      }
-      else values1[counter] = value1Avg;
-      value1Avg = getAvgTemp(values1);
-
-      double value2_tmp = Sensor2.readCelsius();
-
-              #if defined DEBUG_SENSOR_TEMP
-                Serial.print("-");        Serial.print(value2_tmp);        Serial.println("-");
-              #endif
-
-      if (!isnan(value2_tmp)) {
-        double value2diff = value2_tmp - value2Avg;
-        if      ( value2diff >  MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
-        else if ( value2diff < -MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
-        else values2[counter] = value2_tmp;
-      }
-      else values2[counter] = value2Avg;
-      value2Avg = getAvgTemp(values2);
-
-      if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
-    };
     double getAvgTemp (double value[NUM_OF_MEASUREMENTS_TO_READ]) {
       double valueSum=0;
       byte validReads=0;
@@ -411,9 +384,43 @@ class TempSensors : public Block {
       };
       if (validReads > 0) return valueSum / validReads;   else return NAN;
     };
+
+    double updateSensor(double measurements[NUM_OF_MEASUREMENTS_TO_READ], double* avg_measurements, double new_measurement) {
+
+              #if defined DEBUG_SENSOR_TEMP
+                Serial.print("-");        Serial.print(new_measurement);        Serial.print("-");
+              #endif
+
+      if (!isnan(new_measurement)) {
+        double valueDiff = new_measurement - *avg_measurements;
+        if      ( valueDiff >  MAX_TEMP_SENSOR_ERROR )   { measurements[counter] = *avg_measurements + MAX_TEMP_SENSOR_ERROR;    showError(String(new_measurement)); }
+        else if ( valueDiff < -MAX_TEMP_SENSOR_ERROR )   { measurements[counter] = *avg_measurements - MAX_TEMP_SENSOR_ERROR;    showError(String(new_measurement)); }
+        else measurements[counter] = new_measurement;
+      }
+      else measurements[counter] = *avg_measurements;
+      *avg_measurements = getAvgTemp(measurements);
+    };
+
+    void update(void) {
+      updateSensor(values1, &value1Avg, Sensor1.readCelsius());
+      updateSensor(values2, &value2Avg, Sensor2.readCelsius());
+
+      if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
+    };
+
+    double read(void) {
+      byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
+      double valueSum;
+      double reading=0;
+      if (value1Avg > 0)    { valueSum += value1Avg; validReads++; }
+      if (value2Avg > 0)    { valueSum += value2Avg; validReads++; }
+      if (validReads > 0)   reading = valueSum / validReads;
+      else showError("No valid reads top sensors");
+      return reading;
+    };
 };
 
-class EncoderBlock : public Block {
+class EncoderSensor : public Sensors {
   public:
     double value;
 
@@ -442,7 +449,7 @@ class Control : public Coordinates {
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    EncoderBlock sensors;
+    EncoderSensor sensors;
     virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -1375,60 +1382,35 @@ void drawSensors (void)
   else                      turn++;
 }
 
-void computeTopPID (void)
+void computeTempPID (Pid pid, TempControl tempControl, Servo servo);
+void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
 {
-  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
-  double valueSum;
-  if (topTempControl.sensors.value1Avg > 0)    { valueSum += topTempControl.sensors.value1Avg; validReads++; }
-  if (topTempControl.sensors.value2Avg > 0)    { valueSum += topTempControl.sensors.value2Avg; validReads++; }
-  if (validReads > 0)   topPID.input = valueSum / validReads;
-  else topTempControl.sensors.showError("No valid reads top sensors");
+  double temperature = tempControl.sensors.read();
+  if (temperature > 0)   pid.input = temperature;
+  else tempControl.sensors.showError("No valid reads in a sensor");
 
-  topPID.setpoint = topTempControl.setControl.value;
-  double gap = topPID.setpoint - topPID.input;
+  pid.setpoint = tempControl.setControl.value;
+  double gap = pid.setpoint - pid.input;
   if ( gap > PID_MANUAL_THRESHOLD ) {
-    topPID.SetMode(MANUAL);
-    topPID.output = topPID.GetDirection() == DIRECT ? topPID.maxOutput : topPID.minOutput;
+    pid.SetMode(MANUAL);
+    pid.output = pid.GetDirection() == DIRECT ? pid.maxOutput : pid.minOutput;
   } else {
-    if (topPID.GetMode() == MANUAL)  topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
-    topPID.SetMode(AUTOMATIC);
-    topPID.Compute();
+    if (pid.GetMode() == MANUAL)  pid.output = pid.GetDirection() == DIRECT ? pid.minOutput : pid.maxOutput;
+    pid.SetMode(AUTOMATIC);
+    pid.Compute();
   }
-          #if defined DEBUG_TOP_PID
-            showPIDs(bottomPID);
-          #endif
-          #if defined DEBUG_TOP_PID_GRAPH
-            serialGraphPIDs(topPID);
-          #endif
-  topServo.writeMicroseconds(topPID.output);
+//          #if defined DEBUG_PID
+//            showPIDs(bottomPID);
+//          #endif
+//          #if defined DEBUG_PID_GRAPH
+//            serialGraphPIDs(topPID);
+//          #endif
+  servo.writeMicroseconds(pid.output);
 }
-void computeBottomPID (void)
-{
-  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
-  double valueSum;
-  if (bottomTempControl.sensors.value1Avg > 0)    { valueSum += bottomTempControl.sensors.value1Avg; validReads++; }
-  if (bottomTempControl.sensors.value2Avg > 0)    { valueSum += bottomTempControl.sensors.value2Avg; validReads++; }
-  if (validReads > 0)   bottomPID.input = valueSum / validReads;
-  else bottomTempControl.sensors.showError("No valid reads bottom sensors");
 
-  bottomPID.setpoint = bottomTempControl.setControl.value;
-  double gap = bottomPID.setpoint - bottomPID.input;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    bottomPID.SetMode(MANUAL);
-    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.maxOutput : bottomPID.minOutput;
-  } else {
-    if (bottomPID.GetMode() == MANUAL)  bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
-    bottomPID.SetMode(AUTOMATIC);
-    bottomPID.Compute();
-  }
-          #if defined DEBUG_BOTTOM_PID
-            showPIDs(bottomPID);
-          #endif
-          #if defined DEBUG_BOTTOM_PID_GRAPH
-            serialGraphPIDs(bottomPID);
-          #endif
-  bottomServo.writeMicroseconds(bottomPID.output);
-}
+void computeTopPID (void)     {computeTempPID(topPID,    topTempControl,    topServo);}
+void computeBottomPID (void)  {computeTempPID(bottomPID, bottomTempControl, bottomServo);}
+
 void computeConveyorPID (void)
 {
   noInterrupts();
