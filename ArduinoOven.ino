@@ -124,7 +124,7 @@
       #define LONG_CLICK_TIME 600             // minimum ms since touch started to trigger LONG_CLICK_EVENT
       #define LONG_HOLD_TIME  LONG_CLICK_TIME // minimum ms since touch started to trigger LONG_HOLD_EVENT
 
-// States
+// States       # Should've used enum
   #define CONTROLLING_SETPOINTS                       0
   #define CONTROLLING_TOP_PID                         1+CONTROLLING_SETPOINTS
   #define CONTROLLING_BOTTOM_PID                      1+CONTROLLING_TOP_PID
@@ -213,7 +213,7 @@ String stringifyDouble (double number) {
   char buffer[6];
   if (number == int(number))              return String(int(number));
   else if (number > 0) {
-         if (number < 0.1)                return String(dtostrf(number,5,4, buffer)).substring(1);
+    if      (number < 0.1)                return String(dtostrf(number,5,4, buffer)).substring(1);
     else if (number < 1)                  return String(dtostrf(number,4,3, buffer)).substring(1);
     else                                  return dtostrf(number,1,1, buffer);
   }
@@ -259,7 +259,7 @@ class Block : public Coordinates {
     bool isErrorActive = false;
 
     void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
-    void lowlight(void) { backgroundColor = lowlightbackgroundColor; foregroundColor = lowlightforegroundColor; };
+    void lowlight(void)  { backgroundColor = lowlightbackgroundColor;  foregroundColor = lowlightforegroundColor; };
     void drawBackground (void) {
       myGLCD.setColor(backgroundColor);
         myGLCD.fillRect(startX, startY, endX, endY);
