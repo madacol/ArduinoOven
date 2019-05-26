@@ -353,6 +353,7 @@ class TempSensors : public Block {
     {};
 
     void draw(void) {
+      if ( isErrorActive and ERROR_DURATION_MS < millis() - lastTimeSinceError )    removeError();
       drawBackgroundIfHasChanged();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
@@ -1359,21 +1360,9 @@ void drawSensors (void)
 {
   static byte turn;
   switch (turn) {
-    case TOP_TURN:
-      if ( topTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - topTempControl.sensors.lastTimeSinceError )
-        topTempControl.sensors.removeError();
-      topTempControl.sensors.draw();
-    break;
-    case CONVEYOR_TURN:
-      if ( conveyorControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - conveyorControl.sensors.lastTimeSinceError )
-        conveyorControl.sensors.removeError();
-      conveyorControl.sensors.draw();
-    break;
-    case BOTTOM_TURN:
-      if ( bottomTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - bottomTempControl.sensors.lastTimeSinceError )
-        bottomTempControl.sensors.removeError();
-      bottomTempControl.sensors.draw();
-    break;
+    case TOP_TURN:        topTempControl.sensors.draw(); break;
+    case CONVEYOR_TURN:   conveyorControl.sensors.draw(); break;
+    case BOTTOM_TURN:     bottomTempControl.sensors.draw(); break;
   }
   if (turn == BOTTOM_TURN)  turn = TOP_TURN;
   else                      turn++;
