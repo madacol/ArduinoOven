@@ -7,3 +7,5 @@ application.windows64
 application.macosx
 *.sublime-workspace
 .stignore
+*.elf
+*.hex
