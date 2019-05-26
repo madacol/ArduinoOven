@@ -434,6 +434,11 @@ class EncoderBlock : public Block {
 
 class Control : public Coordinates {
   public:
+
+    // Amount to increase/decrease setcontrol
+    double short_event_amount = 0.1;
+    double long_event_amount = 1;
+
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
@@ -455,8 +460,8 @@ class Control : public Coordinates {
       sensors.draw();
     };
     virtual void draw(void) {draw(setControl.value);};
-    virtual void decreaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale*0.1;  setControl.draw();}
-    virtual void increaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale*0.1;  setControl.draw();}
+    virtual void decreaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value-=amount;  setControl.draw();}
+    virtual void increaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value+=amount;  setControl.draw();}
 } conveyorControl;
 
 class TempControl : public Control {
@@ -464,7 +469,11 @@ class TempControl : public Control {
     TempSensors sensors;
     TempControl(byte pinSensor1CS,byte pinSensor2CS):
       sensors(pinSensor1CS, pinSensor2CS)
-    {};
+    {
+      // Amount to increase/decrease setcontrol
+      short_event_amount = 1;
+      long_event_amount = 10;
+    };
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -482,8 +491,6 @@ class TempControl : public Control {
       sensors.draw();
     };
     void draw(void) {draw(setControl.value);};
-    void decreaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale;   setControl.draw();}
-    void increaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale;   setControl.draw();}
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1,
                  PIN_CS_TOP_TEMP_SENSOR_2
