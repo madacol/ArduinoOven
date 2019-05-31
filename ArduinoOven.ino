@@ -1,3 +1,4 @@
+// Serial Options
 //#define DEBUG
 #if defined DEBUG
   #define DEBUG_CONVEYOR_PID
@@ -307,7 +308,7 @@ class SetControl : public Block {
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
-      endX = startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
+      endX = startX+gridInternalWidth+gridWidth; // +gridWidth for 2 columns width
       endY = startY+gridInternalHeight;
     };
     void draw(double number) {
@@ -1387,7 +1388,7 @@ void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
 {
   double temperature = tempControl.sensors.read();
   if (temperature > 0)   pid.input = temperature;
-  else tempControl.sensors.showError("No valid reads in a sensor");
+  else tempControl.sensors.showError("No valid reads in temperature");
 
   pid.setpoint = tempControl.setControl.value;
   double gap = pid.setpoint - pid.input;
@@ -1436,12 +1437,12 @@ void computeConveyorPID (void)
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
         #if defined DEBUG_CONVEYOR_PID
-          Serial.println();
-          Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
-          Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
-          Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
+          //Serial.println();
+          Serial.print(" | stepsPerS_real = ");               Serial.print(stepsPerMs_real*1000);
+          Serial.print(" | stepsPerS_goal = ");               Serial.print(stepsPerMs_goal*1000);
+          Serial.print(" | conveyorPID.input = ");            Serial.print(conveyorPID.input);
           Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
-          Serial.print(" | encoderSteps_counted = "); Serial.print(encoderSteps_counted);
+          Serial.print(" | encoderSteps_counted = ");         Serial.print(encoderSteps_counted);
           Serial.println();
         #endif
 
