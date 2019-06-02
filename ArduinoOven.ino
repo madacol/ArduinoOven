@@ -303,8 +303,31 @@ class MinusButton : public Block {
 };
 
 class SetControl : public Block {
+
+    uint16_t getRGB565(byte red, byte green, byte blue)  { return ((red&0b11111000) << 8) | ((green&0b11111100) << 3) | (blue>>3);}
+
+    uint16_t map_7Bits_to_RGB565FromBlueToRed(uint8_t num7Bits) {
+    /*
+      maps 0-128 to blue-red (passing through green)
+      There are 4 cases to map
+        - 0-31:   blue=maximum    green=increasing  red=0
+        - 32-63:  blue=decreasing green=maximum     red=0
+        - 64-95:  blue=0          green=maximum     red=increasing
+        - 96-127: blue=0          green=decreasing  red=maximum
+    */
+      byte red, green, blue;
+      if      (num7Bits < 32 ) {  blue = 255;               green = (num7Bits<<3);     red = 0;             }
+      else if (num7Bits < 64 ) {  blue = 255-(num7Bits<<3); green = 255;               red = 0;             }
+      else if (num7Bits < 96 ) {  blue = 0;                 green = 255;               red = (num7Bits<<3); }
+      else if (num7Bits < 128) {  blue = 0;                 green = 255-(num7Bits<<3); red = 255;           }
+
+      uint16_t color = getRGB565(red, green, blue);
+      return color;
+    }
+
   public:
     double value;
+    uint8_t servo_status;
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -313,6 +336,7 @@ class SetControl : public Block {
     };
     void draw(double number) {
       drawBackground();
+      foregroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         String number_str = stringifyDouble(number);
         myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
@@ -1407,6 +1431,8 @@ void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
 //            serialGraphPIDs(topPID);
 //          #endif
   servo.writeMicroseconds(pid.output);
+  uint8_t servo_status = map(pid.output, pid.minOutputGraph(), pid.maxOutputGraph(), 0, 127);
+  tempControl.setControl.servo_status = servo_status;
 }
 
 void computeTopPID (void)     {computeTempPID(topPID,    topTempControl,    topServo);}
@@ -1452,6 +1478,9 @@ void computeConveyorPID (void)
   last_computeConveyorTime = computeConveyorTime;
   conveyorControl.sensors.value = int(conveyorPID.input);
   if (stepsPerMs_real > CONVEYOR_MAX_STEPS_PER_MS)  conveyorControl.sensors.showError("Too fast, Impossible");
+
+  uint8_t servo_status = map(conveyorPID.output, conveyorPID.minOutputGraph(), conveyorPID.maxOutputGraph(), 0, 127);
+  conveyorControl.setControl.servo_status = servo_status;
 }
 
 void drawGraphPoint()
