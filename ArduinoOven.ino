@@ -66,8 +66,8 @@
   #define ENCODER_REBOUND_MS          20
 
 // Arduino and Oven Specific Parameters
-  #define STEPS_PER_GEAR_REVOLUTION             400
-  #define GEAR_REVOLUTIONS_TO_CROSS_OVEN        7+1/3
+  #define STEPS_PER_GEAR_REVOLUTION             400.0
+  #define GEAR_REVOLUTIONS_TO_CROSS_OVEN        7.333333333
   #define CONVEYOR_MAX_STEPS_PER_MS             STEPS_PER_GEAR_REVOLUTION / 8000.0 // 0.05
   #define STEPS_TO_CROSS_OVEN                   STEPS_PER_GEAR_REVOLUTION * GEAR_REVOLUTIONS_TO_CROSS_OVEN
   #define ARDUINO_TIME_CORRECTION               1.111
