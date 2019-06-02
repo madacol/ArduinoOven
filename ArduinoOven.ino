@@ -247,13 +247,13 @@ class Coordinates {
 };
 class Block : public Coordinates {
   public:
-    int backgroundColor = BLACK;
-    int foregroundColor = WHITE;
-    int highlightbackgroundColor = GREEN;
-    int highlightforegroundColor = BLACK;
-    int lowlightbackgroundColor = BLACK;
-    int lowlightforegroundColor = WHITE;
-    int old_backgroundColor;
+    uint16_t backgroundColor = BLACK;
+    uint16_t foregroundColor = WHITE;
+    uint16_t highlightbackgroundColor = GREEN;
+    uint16_t highlightforegroundColor = BLACK;
+    uint16_t lowlightbackgroundColor = BLACK;
+    uint16_t lowlightforegroundColor = WHITE;
+    uint16_t old_backgroundColor;
     long lastTimeSinceError;
     bool isErrorActive = false;
 
@@ -644,7 +644,7 @@ class Profile : public Block {
   Profile(5,5,5),
   Profile(-5,-5,-5),
 };
-byte profilesSize = sizeof(profiles) / sizeof(Profile);
+byte const profilesSize = sizeof(profiles) / sizeof(Profile);
 
 /*
 class Profiles : public Block {
