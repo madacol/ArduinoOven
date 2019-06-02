@@ -1480,7 +1480,7 @@ void drawGraphPoint()
 void setup()
 {
   SPI.begin();
-  Serial.begin(115200);
+  Serial.begin(38400);
   Serial.println("ArduinoOven");
 
   // Display init
