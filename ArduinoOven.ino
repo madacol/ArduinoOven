@@ -1424,12 +1424,12 @@ void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
     pid.SetMode(AUTOMATIC);
     pid.Compute();
   }
-//          #if defined DEBUG_PID
-//            showPIDs(bottomPID);
-//          #endif
-//          #if defined DEBUG_PID_GRAPH
-//            serialGraphPIDs(topPID);
-//          #endif
+          #if defined DEBUG_PID
+            showPIDs(pid);
+          #endif
+          #if defined DEBUG_PID_GRAPH
+            serialGraphPIDs(pid);
+          #endif
   servo.writeMicroseconds(pid.output);
   uint8_t servo_status = map(pid.output, pid.minOutputGraph(), pid.maxOutputGraph(), 0, 127);
   tempControl.setControl.servo_status = servo_status;
