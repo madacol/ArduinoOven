@@ -1,9 +1,12 @@
 // Serial Options
 //#define DEBUG
+#define DEBUG_JSON
+#if defined DEBUG_JSON
+  #define DEBUG_CONVEYOR_PID_JSON
+  #define DEBUG_PID_JSON
+  #define DEBUG_SENSOR_TEMP_JSON
+#endif
 #if defined DEBUG
-  #define DEBUG_CONVEYOR_PID
-  #define DEBUG_PID
-  #define DEBUG_SENSOR_TEMP
   #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_PID_GRAPH
 #endif
@@ -225,9 +228,18 @@ byte getFontSize(String number_str, byte normalFontSize) {
   return (number_length <= 3) ? normalFontSize : ( normalFontSize - (number_length-3) );
 }
 
-void debug(String str) {
-  Serial.println(str);
-}
+//DEBUG
+void debug(String str)  { Serial.println(str); }
+
+void serialStartJsonObject(String name)             { Serial.print("{\"name\":\""+name+"\",\"data\":{"); }
+void serialEndJsonObject()                          { Serial.println("}},"); }
+void serialAddJsonObject(String key, double value)  { Serial.print("\""+key+"\":"+String(value)+","); }
+void serialAddJsonObject(String key, String value)  { Serial.print("\""+key+"\":\""+value+"\","); }
+
+void serialStartJsonArray()             { Serial.print("["); }
+void serialEndJsonArray()               { Serial.print("],"); }
+void serialAddJsonArray(double value)   { Serial.print(String(value)+","); }
+void serialAddJsonArray(String value)   { Serial.print("\""+value+"\","); }
 
 
 // ###############################################################
@@ -412,10 +424,6 @@ class TempSensors : public Sensors {
 
     double updateSensor(double measurements[NUM_OF_MEASUREMENTS_TO_READ], double* avg_measurements, double new_measurement) {
 
-              #if defined DEBUG_SENSOR_TEMP
-                Serial.print("-");        Serial.print(new_measurement);        Serial.print("-");
-              #endif
-
       if (!isnan(new_measurement)) {
         double valueDiff = new_measurement - *avg_measurements;
         if      ( valueDiff >  MAX_TEMP_SENSOR_ERROR )   { measurements[counter] = *avg_measurements + MAX_TEMP_SENSOR_ERROR;    showError(String(new_measurement)); }
@@ -427,8 +435,18 @@ class TempSensors : public Sensors {
     };
 
     void update(void) {
-      updateSensor(values1, &value1Avg, Sensor1.readCelsius());
-      updateSensor(values2, &value2Avg, Sensor2.readCelsius());
+      double new_measurement1 = Sensor1.readCelsius();
+      double new_measurement2 = Sensor2.readCelsius();
+              #if defined DEBUG_SENSOR_TEMP_JSON
+                serialStartJsonObject("temperatures");
+                  serialStartJsonArray();
+                    serialAddJsonArray(new_measurement1);
+                    serialAddJsonArray(new_measurement2);
+                  serialEndJsonArray();
+                serialEndJsonObject();
+              #endif
+      updateSensor(values1, &value1Avg, new_measurement1);
+      updateSensor(values2, &value2Avg, new_measurement2);
 
       if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
     };
@@ -533,11 +551,13 @@ class TempControl : public Control {
 
 class Pid : public PID {
   public:
+    const String name;
     double kp, ki, kd;
     double input, output, setpoint;
     int minOutput, startOutput, maxOutput;
     byte EEPROMaddress, outputLimitsEEPROMaddress;
-    Pid(double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
+    Pid(String _name, double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
+      name(_name),
       kp(_kp),
       ki(_ki),
       kd(_kd),
@@ -589,9 +609,9 @@ class Pid : public PID {
     }
 
 };
-Pid topPID     (TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS);
-Pid bottomPID  (BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, REVERSE, BOTTOM_PID_ADDRESS);
-Pid conveyorPID(CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
+Pid topPID     ("top", TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS);
+Pid bottomPID  ("bottom", BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, REVERSE, BOTTOM_PID_ADDRESS);
+Pid conveyorPID("conveyor", CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
 
 class Profile : public Block {
   public:
@@ -766,18 +786,6 @@ bool isPressed (TSPoint tp)
 
 bool hasTouchStatusChanged () {
   return TouchStatus != lastTouchStatus;
-}
-
-void showPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
-void showPIDs(Pid pid)
-{
-  Serial.print("\r\nInput="); Serial.print(pid.input);
-  Serial.print(" Setpoint="); Serial.print(pid.setpoint);
-  Serial.print(" Output="); Serial.print(pid.output);
-  Serial.print(" kp="); Serial.print(pid.GetKp());
-  Serial.print(" ki="); Serial.print(pid.GetKi());
-  Serial.print(" kd="); Serial.print(pid.GetKd());
-  Serial.println();
 }
 
 void serialGraphPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
@@ -1424,8 +1432,15 @@ void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
     pid.SetMode(AUTOMATIC);
     pid.Compute();
   }
-          #if defined DEBUG_PID
-            showPIDs(pid);
+          #if defined DEBUG_PID_JSON
+            serialStartJsonObject("PID_"+pid.name);
+              serialAddJsonObject("Input"     , pid.input);
+              serialAddJsonObject("Setpoint"  , pid.setpoint);
+              serialAddJsonObject("Output"    , pid.output);
+              serialAddJsonObject("kp"        , pid.GetKp());
+              serialAddJsonObject("ki"        , pid.GetKi());
+              serialAddJsonObject("kd"        , pid.GetKd());
+            serialEndJsonObject();
           #endif
           #if defined DEBUG_PID_GRAPH
             serialGraphPIDs(pid);
@@ -1462,14 +1477,14 @@ void computeConveyorPID (void)
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
-        #if defined DEBUG_CONVEYOR_PID
-          //Serial.println();
-          Serial.print(" | stepsPerS_real = ");               Serial.print(stepsPerMs_real*1000);
-          Serial.print(" | stepsPerS_goal = ");               Serial.print(stepsPerMs_goal*1000);
-          Serial.print(" | conveyorPID.input = ");            Serial.print(conveyorPID.input);
-          Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
-          Serial.print(" | encoderSteps_counted = ");         Serial.print(encoderSteps_counted);
-          Serial.println();
+        #if defined DEBUG_CONVEYOR_PID_JSON
+          serialStartJsonObject("PID_conveyor");
+            serialAddJsonObject("stepsPerS_real"               , stepsPerMs_real*1000);
+            serialAddJsonObject("stepsPerS_goal"               , stepsPerMs_goal*1000);
+            serialAddJsonObject("conveyorPID.input"            , conveyorPID.input);
+            serialAddJsonObject("encoderStepsCounter_duration" , encoderStepsCounter_duration);
+            serialAddJsonObject("encoderSteps_counted"         , encoderSteps_counted);
+          serialEndJsonObject();
         #endif
 
   conveyorPID.setpoint = 0;
