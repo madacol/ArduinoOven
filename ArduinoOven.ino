@@ -1,13 +1,15 @@
+// Serial Options
 //#define DEBUG
-#if defined DEBUG
-  #define DEBUG_CONVEYOR_PID
-  #define DEBUG_TOP_PID
-  #define DEBUG_BOTTOM_PID
-  #define DEBUG_SENSOR_TEMP
-  #define DEBUG_SENSOR_SHOW_ERROR
-  #define DEBUG_TOP_PID_GRAPH
+#define DEBUG_JSON
+#if defined DEBUG_JSON
+  #define DEBUG_CONVEYOR_PID_JSON
+  #define DEBUG_PID_JSON
+  #define DEBUG_SENSOR_TEMP_JSON
 #endif
-  #define DEBUG_BOTTOM_PID_GRAPH
+#if defined DEBUG
+  #define DEBUG_SENSOR_SHOW_ERROR
+  #define DEBUG_PID_GRAPH
+#endif
 
   //#define SERIAL_COMMANDER
 
@@ -67,8 +69,8 @@
   #define ENCODER_REBOUND_MS          20
 
 // Arduino and Oven Specific Parameters
-  #define STEPS_PER_GEAR_REVOLUTION             400
-  #define GEAR_REVOLUTIONS_TO_CROSS_OVEN        7+1/3
+  #define STEPS_PER_GEAR_REVOLUTION             400.0
+  #define GEAR_REVOLUTIONS_TO_CROSS_OVEN        7.333333333
   #define CONVEYOR_MAX_STEPS_PER_MS             STEPS_PER_GEAR_REVOLUTION / 8000.0 // 0.05
   #define STEPS_TO_CROSS_OVEN                   STEPS_PER_GEAR_REVOLUTION * GEAR_REVOLUTIONS_TO_CROSS_OVEN
   #define ARDUINO_TIME_CORRECTION               1.111
@@ -226,9 +228,18 @@ byte getFontSize(String number_str, byte normalFontSize) {
   return (number_length <= 3) ? normalFontSize : ( normalFontSize - (number_length-3) );
 }
 
-void debug(String str) {
-  Serial.println(str);
-}
+//DEBUG
+void debug(String str)  { Serial.println(str); }
+
+void serialStartJsonObject(String name)             { Serial.print("{\"name\":\""+name+"\",\"data\":{"); }
+void serialEndJsonObject()                          { Serial.println("}},"); }
+void serialAddJsonObject(String key, double value)  { Serial.print("\""+key+"\":"+String(value)+","); }
+void serialAddJsonObject(String key, String value)  { Serial.print("\""+key+"\":\""+value+"\","); }
+
+void serialStartJsonArray()             { Serial.print("["); }
+void serialEndJsonArray()               { Serial.print("],"); }
+void serialAddJsonArray(double value)   { Serial.print(String(value)+","); }
+void serialAddJsonArray(String value)   { Serial.print("\""+value+"\","); }
 
 
 // ###############################################################
@@ -248,13 +259,13 @@ class Coordinates {
 };
 class Block : public Coordinates {
   public:
-    int backgroundColor = BLACK;
-    int foregroundColor = WHITE;
-    int highlightbackgroundColor = GREEN;
-    int highlightforegroundColor = BLACK;
-    int lowlightbackgroundColor = BLACK;
-    int lowlightforegroundColor = WHITE;
-    int old_backgroundColor;
+    uint16_t backgroundColor = BLACK;
+    uint16_t foregroundColor = WHITE;
+    uint16_t highlightbackgroundColor = GREEN;
+    uint16_t highlightforegroundColor = BLACK;
+    uint16_t lowlightbackgroundColor = BLACK;
+    uint16_t lowlightforegroundColor = WHITE;
+    uint16_t old_backgroundColor;
     long lastTimeSinceError;
     bool isErrorActive = false;
 
@@ -304,16 +315,40 @@ class MinusButton : public Block {
 };
 
 class SetControl : public Block {
+
+    uint16_t getRGB565(byte red, byte green, byte blue)  { return ((red&0b11111000) << 8) | ((green&0b11111100) << 3) | (blue>>3);}
+
+    uint16_t map_7Bits_to_RGB565FromBlueToRed(uint8_t num7Bits) {
+    /*
+      maps 0-128 to blue-red (passing through green)
+      There are 4 cases to map
+        - 0-31:   blue=maximum    green=increasing  red=0
+        - 32-63:  blue=decreasing green=maximum     red=0
+        - 64-95:  blue=0          green=maximum     red=increasing
+        - 96-127: blue=0          green=decreasing  red=maximum
+    */
+      byte red, green, blue;
+      if      (num7Bits < 32 ) {  blue = 255;               green = (num7Bits<<3);     red = 0;             }
+      else if (num7Bits < 64 ) {  blue = 255-(num7Bits<<3); green = 255;               red = 0;             }
+      else if (num7Bits < 96 ) {  blue = 0;                 green = 255;               red = (num7Bits<<3); }
+      else if (num7Bits < 128) {  blue = 0;                 green = 255-(num7Bits<<3); red = 255;           }
+
+      uint16_t color = getRGB565(red, green, blue);
+      return color;
+    }
+
   public:
     double value;
+    uint8_t servo_status;
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
-      endX = startX+gridWidth+gridInternalWidth; // +gridWidth for 2 columns width
+      endX = startX+gridInternalWidth+gridWidth; // +gridWidth for 2 columns width
       endY = startY+gridInternalHeight;
     };
     void draw(double number) {
       drawBackground();
+      foregroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         String number_str = stringifyDouble(number);
         myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
@@ -338,7 +373,14 @@ class PlusButton : public Block {
     }
 };
 
-class TempSensors : public Block {
+class Sensors : public Block {
+  public:
+  virtual void draw(void){};
+  virtual void update(void){};
+  virtual double read(void){};
+};
+
+class TempSensors : public Sensors {
   public:
     double value1Avg;
     double value2Avg;
@@ -353,6 +395,7 @@ class TempSensors : public Block {
     {};
 
     void draw(void) {
+      if ( isErrorActive and ERROR_DURATION_MS < millis() - lastTimeSinceError )    removeError();
       drawBackgroundIfHasChanged();
       myGLCD.setTextColor(foregroundColor, backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
@@ -366,39 +409,7 @@ class TempSensors : public Block {
         myGLCD.fillRect(startX+7+6, startY+35 , startX+7+7, startY+35+15);
       */
     };
-    void update(void) {
-      double value1_tmp = Sensor1.readCelsius();
 
-              #if defined DEBUG_SENSOR_TEMP
-                Serial.print("-");        Serial.print(value1_tmp);        Serial.print("-");
-              #endif
-
-      if (!isnan(value1_tmp)) {
-        double value1diff = value1_tmp - value1Avg;
-        if      ( value1diff >  MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
-        else if ( value1diff < -MAX_TEMP_SENSOR_ERROR )   { values1[counter] = value1Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value1_tmp)); }
-        else values1[counter] = value1_tmp;
-      }
-      else values1[counter] = value1Avg;
-      value1Avg = getAvgTemp(values1);
-
-      double value2_tmp = Sensor2.readCelsius();
-
-              #if defined DEBUG_SENSOR_TEMP
-                Serial.print("-");        Serial.print(value2_tmp);        Serial.println("-");
-              #endif
-
-      if (!isnan(value2_tmp)) {
-        double value2diff = value2_tmp - value2Avg;
-        if      ( value2diff >  MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg + MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
-        else if ( value2diff < -MAX_TEMP_SENSOR_ERROR )   { values2[counter] = value2Avg - MAX_TEMP_SENSOR_ERROR;    showError(String(value2_tmp)); }
-        else values2[counter] = value2_tmp;
-      }
-      else values2[counter] = value2Avg;
-      value2Avg = getAvgTemp(values2);
-
-      if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
-    };
     double getAvgTemp (double value[NUM_OF_MEASUREMENTS_TO_READ]) {
       double valueSum=0;
       byte validReads=0;
@@ -410,9 +421,49 @@ class TempSensors : public Block {
       };
       if (validReads > 0) return valueSum / validReads;   else return NAN;
     };
+
+    double updateSensor(double measurements[NUM_OF_MEASUREMENTS_TO_READ], double* avg_measurements, double new_measurement) {
+
+      if (!isnan(new_measurement)) {
+        double valueDiff = new_measurement - *avg_measurements;
+        if      ( valueDiff >  MAX_TEMP_SENSOR_ERROR )   { measurements[counter] = *avg_measurements + MAX_TEMP_SENSOR_ERROR;    showError(String(new_measurement)); }
+        else if ( valueDiff < -MAX_TEMP_SENSOR_ERROR )   { measurements[counter] = *avg_measurements - MAX_TEMP_SENSOR_ERROR;    showError(String(new_measurement)); }
+        else measurements[counter] = new_measurement;
+      }
+      else measurements[counter] = *avg_measurements;
+      *avg_measurements = getAvgTemp(measurements);
+    };
+
+    void update(void) {
+      double new_measurement1 = Sensor1.readCelsius();
+      double new_measurement2 = Sensor2.readCelsius();
+              #if defined DEBUG_SENSOR_TEMP_JSON
+                serialStartJsonObject("temperatures");
+                  serialStartJsonArray();
+                    serialAddJsonArray(new_measurement1);
+                    serialAddJsonArray(new_measurement2);
+                  serialEndJsonArray();
+                serialEndJsonObject();
+              #endif
+      updateSensor(values1, &value1Avg, new_measurement1);
+      updateSensor(values2, &value2Avg, new_measurement2);
+
+      if (counter == NUM_OF_MEASUREMENTS_TO_READ-1) counter=0;    else counter++;
+    };
+
+    double read(void) {
+      byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
+      double valueSum;
+      double reading=0;
+      if (value1Avg > 0)    { valueSum += value1Avg; validReads++; }
+      if (value2Avg > 0)    { valueSum += value2Avg; validReads++; }
+      if (validReads > 0)   reading = valueSum / validReads;
+      else showError("No valid reads top sensors");
+      return reading;
+    };
 };
 
-class EncoderBlock : public Block {
+class EncoderSensor : public Sensors {
   public:
     double value;
 
@@ -433,10 +484,15 @@ class EncoderBlock : public Block {
 
 class Control : public Coordinates {
   public:
+
+    // Amount to increase/decrease setcontrol
+    double short_event_amount = 0.1;
+    double long_event_amount = 1;
+
     MinusButton minusButton;
     SetControl setControl;
     PlusButton plusButton;
-    EncoderBlock sensors;
+    EncoderSensor sensors;
     virtual void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -454,8 +510,8 @@ class Control : public Coordinates {
       sensors.draw();
     };
     virtual void draw(void) {draw(setControl.value);};
-    virtual void decreaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale*0.1;  setControl.draw();}
-    virtual void increaseSetControl(byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale*0.1;  setControl.draw();}
+    virtual void decreaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value-=amount;  setControl.draw();}
+    virtual void increaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value+=amount;  setControl.draw();}
 } conveyorControl;
 
 class TempControl : public Control {
@@ -463,7 +519,11 @@ class TempControl : public Control {
     TempSensors sensors;
     TempControl(byte pinSensor1CS,byte pinSensor2CS):
       sensors(pinSensor1CS, pinSensor2CS)
-    {};
+    {
+      // Amount to increase/decrease setcontrol
+      short_event_amount = 1;
+      long_event_amount = 10;
+    };
     void setCoordinates(int x, int y) {
       startX = x;
       startY = y;
@@ -481,8 +541,6 @@ class TempControl : public Control {
       sensors.draw();
     };
     void draw(void) {draw(setControl.value);};
-    void decreaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value-=scale;   setControl.draw();}
-    void increaseSetControl (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;  setControl.value+=scale;   setControl.draw();}
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1,
                  PIN_CS_TOP_TEMP_SENSOR_2
@@ -493,11 +551,13 @@ class TempControl : public Control {
 
 class Pid : public PID {
   public:
+    const String name;
     double kp, ki, kd;
     double input, output, setpoint;
     int minOutput, startOutput, maxOutput;
     byte EEPROMaddress, outputLimitsEEPROMaddress;
-    Pid(double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
+    Pid(String _name, double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
+      name(_name),
       kp(_kp),
       ki(_ki),
       kd(_kd),
@@ -549,9 +609,9 @@ class Pid : public PID {
     }
 
 };
-Pid topPID     (TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS);
-Pid bottomPID  (BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, REVERSE, BOTTOM_PID_ADDRESS);
-Pid conveyorPID(CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
+Pid topPID     ("top", TOP_PID_KP     , TOP_PID_KI     , TOP_PID_KD     , P_ON_E, REVERSE, TOP_PID_ADDRESS);
+Pid bottomPID  ("bottom", BOTTOM_PID_KP  , BOTTOM_PID_KI  , BOTTOM_PID_KD  , P_ON_E, REVERSE, BOTTOM_PID_ADDRESS);
+Pid conveyorPID("conveyor", CONVEYOR_PID_KP, CONVEYOR_PID_KI, CONVEYOR_PID_KD, P_ON_E, DIRECT , CONVEYOR_PID_ADDRESS);
 
 class Profile : public Block {
   public:
@@ -628,7 +688,7 @@ class Profile : public Block {
   Profile(5,5,5),
   Profile(-5,-5,-5),
 };
-byte profilesSize = sizeof(profiles) / sizeof(Profile);
+byte const profilesSize = sizeof(profiles) / sizeof(Profile);
 
 /*
 class Profiles : public Block {
@@ -726,18 +786,6 @@ bool isPressed (TSPoint tp)
 
 bool hasTouchStatusChanged () {
   return TouchStatus != lastTouchStatus;
-}
-
-void showPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
-void showPIDs(Pid pid)
-{
-  Serial.print("\r\nInput="); Serial.print(pid.input);
-  Serial.print(" Setpoint="); Serial.print(pid.setpoint);
-  Serial.print(" Output="); Serial.print(pid.output);
-  Serial.print(" kp="); Serial.print(pid.GetKp());
-  Serial.print(" ki="); Serial.print(pid.GetKi());
-  Serial.print(" kd="); Serial.print(pid.GetKd());
-  Serial.println();
 }
 
 void serialGraphPIDs(Pid pid); // Compiler complains otherwise ¬¬. Apparently one cannot use functions with parameters that are instances of classes declared in the same file --_(¬.¬)_--
@@ -1359,80 +1407,52 @@ void drawSensors (void)
 {
   static byte turn;
   switch (turn) {
-    case TOP_TURN:
-      if ( topTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - topTempControl.sensors.lastTimeSinceError )
-        topTempControl.sensors.removeError();
-      topTempControl.sensors.draw();
-    break;
-    case CONVEYOR_TURN:
-      if ( conveyorControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - conveyorControl.sensors.lastTimeSinceError )
-        conveyorControl.sensors.removeError();
-      conveyorControl.sensors.draw();
-    break;
-    case BOTTOM_TURN:
-      if ( bottomTempControl.sensors.isErrorActive and ERROR_DURATION_MS < millis() - bottomTempControl.sensors.lastTimeSinceError )
-        bottomTempControl.sensors.removeError();
-      bottomTempControl.sensors.draw();
-    break;
+    case TOP_TURN:        topTempControl.sensors.draw(); break;
+    case CONVEYOR_TURN:   conveyorControl.sensors.draw(); break;
+    case BOTTOM_TURN:     bottomTempControl.sensors.draw(); break;
   }
   if (turn == BOTTOM_TURN)  turn = TOP_TURN;
   else                      turn++;
 }
 
-void computeTopPID (void)
+void computeTempPID (Pid pid, TempControl tempControl, Servo servo);
+void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
 {
-  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
-  double valueSum;
-  if (topTempControl.sensors.value1Avg > 0)    { valueSum += topTempControl.sensors.value1Avg; validReads++; }
-  if (topTempControl.sensors.value2Avg > 0)    { valueSum += topTempControl.sensors.value2Avg; validReads++; }
-  if (validReads > 0)   topPID.input = valueSum / validReads;
-  else topTempControl.sensors.showError("No valid reads top sensors");
+  double temperature = tempControl.sensors.read();
+  if (temperature > 0)   pid.input = temperature;
+  else tempControl.sensors.showError("No valid reads in temperature");
 
-  topPID.setpoint = topTempControl.setControl.value;
-  double gap = topPID.setpoint - topPID.input;
+  pid.setpoint = tempControl.setControl.value;
+  double gap = pid.setpoint - pid.input;
   if ( gap > PID_MANUAL_THRESHOLD ) {
-    topPID.SetMode(MANUAL);
-    topPID.output = topPID.GetDirection() == DIRECT ? topPID.maxOutput : topPID.minOutput;
+    pid.SetMode(MANUAL);
+    pid.output = pid.GetDirection() == DIRECT ? pid.maxOutput : pid.minOutput;
   } else {
-    if (topPID.GetMode() == MANUAL)  topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
-    topPID.SetMode(AUTOMATIC);
-    topPID.Compute();
+    if (pid.GetMode() == MANUAL)  pid.output = pid.GetDirection() == DIRECT ? pid.minOutput : pid.maxOutput;
+    pid.SetMode(AUTOMATIC);
+    pid.Compute();
   }
-          #if defined DEBUG_TOP_PID
-            showPIDs(bottomPID);
+          #if defined DEBUG_PID_JSON
+            serialStartJsonObject("PID_"+pid.name);
+              serialAddJsonObject("Input"     , pid.input);
+              serialAddJsonObject("Setpoint"  , pid.setpoint);
+              serialAddJsonObject("Output"    , pid.output);
+              serialAddJsonObject("kp"        , pid.GetKp());
+              serialAddJsonObject("ki"        , pid.GetKi());
+              serialAddJsonObject("kd"        , pid.GetKd());
+            serialEndJsonObject();
           #endif
-          #if defined DEBUG_TOP_PID_GRAPH
-            serialGraphPIDs(topPID);
+          #if defined DEBUG_PID_GRAPH
+            serialGraphPIDs(pid);
           #endif
-  topServo.writeMicroseconds(topPID.output);
+  servo.writeMicroseconds(pid.output);
+  uint8_t servo_status = map(pid.output, pid.minOutputGraph(), pid.maxOutputGraph(), 0, 127);
+  tempControl.setControl.servo_status = servo_status;
 }
-void computeBottomPID (void)
-{
-  byte validReads=0; // If it's not set to 0, then "if (validReads > 0)" will always be True
-  double valueSum;
-  if (bottomTempControl.sensors.value1Avg > 0)    { valueSum += bottomTempControl.sensors.value1Avg; validReads++; }
-  if (bottomTempControl.sensors.value2Avg > 0)    { valueSum += bottomTempControl.sensors.value2Avg; validReads++; }
-  if (validReads > 0)   bottomPID.input = valueSum / validReads;
-  else bottomTempControl.sensors.showError("No valid reads bottom sensors");
 
-  bottomPID.setpoint = bottomTempControl.setControl.value;
-  double gap = bottomPID.setpoint - bottomPID.input;
-  if ( gap > PID_MANUAL_THRESHOLD ) {
-    bottomPID.SetMode(MANUAL);
-    bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.maxOutput : bottomPID.minOutput;
-  } else {
-    if (bottomPID.GetMode() == MANUAL)  bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
-    bottomPID.SetMode(AUTOMATIC);
-    bottomPID.Compute();
-  }
-          #if defined DEBUG_BOTTOM_PID
-            showPIDs(bottomPID);
-          #endif
-          #if defined DEBUG_BOTTOM_PID_GRAPH
-            serialGraphPIDs(bottomPID);
-          #endif
-  bottomServo.writeMicroseconds(bottomPID.output);
-}
+void computeTopPID (void)     {computeTempPID(topPID,    topTempControl,    topServo);}
+void computeBottomPID (void)  {computeTempPID(bottomPID, bottomTempControl, bottomServo);}
+
 void computeConveyorPID (void)
 {
   noInterrupts();
@@ -1457,14 +1477,14 @@ void computeConveyorPID (void)
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
-        #if defined DEBUG_CONVEYOR_PID
-          Serial.println();
-          Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
-          Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
-          Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
-          Serial.print(" | encoderStepsCounter_duration = "); Serial.print(encoderStepsCounter_duration);
-          Serial.print(" | encoderSteps_counted = "); Serial.print(encoderSteps_counted);
-          Serial.println();
+        #if defined DEBUG_CONVEYOR_PID_JSON
+          serialStartJsonObject("PID_conveyor");
+            serialAddJsonObject("stepsPerS_real"               , stepsPerMs_real*1000);
+            serialAddJsonObject("stepsPerS_goal"               , stepsPerMs_goal*1000);
+            serialAddJsonObject("conveyorPID.input"            , conveyorPID.input);
+            serialAddJsonObject("encoderStepsCounter_duration" , encoderStepsCounter_duration);
+            serialAddJsonObject("encoderSteps_counted"         , encoderSteps_counted);
+          serialEndJsonObject();
         #endif
 
   conveyorPID.setpoint = 0;
@@ -1473,6 +1493,9 @@ void computeConveyorPID (void)
   last_computeConveyorTime = computeConveyorTime;
   conveyorControl.sensors.value = int(conveyorPID.input);
   if (stepsPerMs_real > CONVEYOR_MAX_STEPS_PER_MS)  conveyorControl.sensors.showError("Too fast, Impossible");
+
+  uint8_t servo_status = map(conveyorPID.output, conveyorPID.minOutputGraph(), conveyorPID.maxOutputGraph(), 0, 127);
+  conveyorControl.setControl.servo_status = servo_status;
 }
 
 void drawGraphPoint()
@@ -1501,7 +1524,7 @@ void drawGraphPoint()
 void setup()
 {
   SPI.begin();
-  Serial.begin(115200);
+  Serial.begin(38400);
   Serial.println("ArduinoOven");
 
   // Display init
