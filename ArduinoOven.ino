@@ -1,8 +1,8 @@
 //#define DEBUG
-#if defined DEBUG
-  #define DEBUG_CONVEYOR_PID
   #define DEBUG_TOP_PID
   #define DEBUG_BOTTOM_PID
+#if defined DEBUG
+  #define DEBUG_CONVEYOR_PID
   #define DEBUG_SENSOR_TEMP
   #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_TOP_PID_GRAPH
@@ -1401,7 +1401,7 @@ void computeTopPID (void)
     topPID.Compute();
   }
           #if defined DEBUG_TOP_PID
-            showPIDs(bottomPID);
+            showPIDs(topPID);
           #endif
           #if defined DEBUG_TOP_PID_GRAPH
             serialGraphPIDs(topPID);
