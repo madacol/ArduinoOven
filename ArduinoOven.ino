@@ -1,13 +1,14 @@
 //#define DEBUG
+  #define DEBUG_TOUCHSCREEN
+#if defined DEBUG
   #define DEBUG_TOP_PID
   #define DEBUG_BOTTOM_PID
-#if defined DEBUG
   #define DEBUG_CONVEYOR_PID
   #define DEBUG_SENSOR_TEMP
   #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_TOP_PID_GRAPH
-#endif
   #define DEBUG_BOTTOM_PID_GRAPH
+#endif
 
   //#define SERIAL_COMMANDER
 
@@ -713,6 +714,12 @@ TSPoint getAvgTouchPoint(void)
       count++;
     }
   }
+        #if defined DEBUG_TOUCHSCREEN
+          Serial.print(" z="); Serial.print(tp.z);
+          Serial.print(" x="); Serial.print(tp.x);
+          Serial.print(" y="); Serial.print(tp.y);
+          Serial.println();
+        #endif
   if (count < QUORUM) tp.z=0;
   else { tp.x /= count; tp.y /= count; tp.z /= count; } // get average
   int temp = map(tp.y, 930, 140, 0, dispX-1);
@@ -1465,7 +1472,6 @@ void computeConveyorPID (void)
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
 
         #if defined DEBUG_CONVEYOR_PID
-          Serial.println();
           Serial.print(" | stepsPerS_real = "); Serial.print(stepsPerMs_real*1000);
           Serial.print(" | stepsPerS_goal = "); Serial.print(stepsPerMs_goal*1000);
           Serial.print(" | conveyorPID.input = "); Serial.print(conveyorPID.input);
