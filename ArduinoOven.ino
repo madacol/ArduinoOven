@@ -1,6 +1,6 @@
 //#define DEBUG
-  #define DEBUG_TOUCHSCREEN
 #if defined DEBUG
+  #define DEBUG_TOUCHSCREEN
   #define DEBUG_TOP_PID
   #define DEBUG_BOTTOM_PID
   #define DEBUG_CONVEYOR_PID
@@ -702,6 +702,9 @@ TSPoint readResistiveTouch(void)
 TSPoint getAvgTouchPoint(void)
 {
   TSPoint tp;
+  tp.x=0;
+  tp.y=0;
+  tp.z=0;
   byte count = 0;
   for (byte i=0; i < NUM_OF_SAMPLES; i++)
   {
