@@ -1538,7 +1538,12 @@ void setup()
     bottomTempControl.setCoordinates( isOutline, ( dispY - 1 ) - isOutline - gridInternalHeight );
     conveyorControl.setCoordinates( isOutline, bottomTempControl.startY - gridHeight );
     topTempControl.setCoordinates( isOutline, conveyorControl.startY - gridHeight );
-    calculateProfilesProperties();
+
+  // Load EEPROM
+    calculateProfilesProperties();    // Also set coordinates
+    topPID.loadParameters();
+    bottomPID.loadParameters();
+    conveyorPID.loadParameters();
 
   // Servos
     topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
@@ -1573,15 +1578,12 @@ void setup()
     drawGraphPointThread.setInterval(DRAW_GRAPH_POINT_INTERVAL);
 
   // PIDs
-    topPID.loadParameters();
     topPID.SetSampleTime(TOP_PID_INTERVAL);
     topPID.output = topPID.GetDirection() == DIRECT ? topPID.minOutput : topPID.maxOutput;
     topPID.SetMode(AUTOMATIC);
-    bottomPID.loadParameters();
     bottomPID.SetSampleTime(BOTTOM_PID_INTERVAL);
     bottomPID.output = bottomPID.GetDirection() == DIRECT ? bottomPID.minOutput : bottomPID.maxOutput;
     bottomPID.SetMode(AUTOMATIC);
-    conveyorPID.loadParameters();
     conveyorPID.SetSampleTime(CONVEYOR_PID_INTERVAL);
     conveyorPID.SetMode(AUTOMATIC);
 
