@@ -7,6 +7,7 @@
   #define DEBUG_SENSOR_TEMP_JSON
 #endif
 #if defined DEBUG
+  #define DEBUG_TOUCHSCREEN
   #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_PID_GRAPH
 #endif
@@ -759,6 +760,9 @@ TSPoint readResistiveTouch(void)
 TSPoint getAvgTouchPoint(void)
 {
   TSPoint tp;
+  tp.x=0;
+  tp.y=0;
+  tp.z=0;
   byte count = 0;
   for (byte i=0; i < NUM_OF_SAMPLES; i++)
   {
