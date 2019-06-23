@@ -1419,43 +1419,45 @@ void drawSensors (void)
   else                      turn++;
 }
 
-void computeTempPID (Pid pid, TempControl tempControl, Servo servo);
-void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
+void computeTempPID (Pid* pid, TempControl* tempControl, Servo* servo);
+void computeTempPID (Pid* pid, TempControl* tempControl, Servo* servo)
 {
-  double temperature = tempControl.sensors.read();
-  if (temperature > 0)   pid.input = temperature;
-  else tempControl.sensors.showError("No valid reads in temperature");
+  double temperature = tempControl->sensors.read();
+  if (temperature > 0)   pid->input = temperature;
+  else tempControl->sensors.showError("No valid reads in temperature");
 
-  pid.setpoint = tempControl.setControl.value;
-  double gap = pid.setpoint - pid.input;
+  pid->setpoint = tempControl->setControl.value;
+  double gap = pid->setpoint - pid->input;
   if ( gap > PID_MANUAL_THRESHOLD ) {
-    pid.SetMode(MANUAL);
-    pid.output = pid.GetDirection() == DIRECT ? pid.maxOutput : pid.minOutput;
+    pid->SetMode(MANUAL);
+    pid->output = pid->GetDirection() == DIRECT ? pid->maxOutput : pid->minOutput;
   } else {
-    if (pid.GetMode() == MANUAL)  pid.output = pid.GetDirection() == DIRECT ? pid.minOutput : pid.maxOutput;
-    pid.SetMode(AUTOMATIC);
-    pid.Compute();
+    if (pid->GetMode() == MANUAL) {
+      pid->output = pid->GetDirection() == DIRECT ? pid->minOutput : pid->maxOutput;
+      pid->SetMode(AUTOMATIC);
+    }
+    pid->Compute();
   }
           #if defined DEBUG_PID_JSON
-            serialStartJsonObject("PID_"+pid.name);
-              serialAddJsonObject("Input"     , pid.input);
-              serialAddJsonObject("Setpoint"  , pid.setpoint);
-              serialAddJsonObject("Output"    , pid.output);
-              serialAddJsonObject("kp"        , pid.GetKp());
-              serialAddJsonObject("ki"        , pid.GetKi());
-              serialAddJsonObject("kd"        , pid.GetKd());
+            serialStartJsonObject("PID_"+pid->name);
+              serialAddJsonObject("Input"     , pid->input);
+              serialAddJsonObject("Setpoint"  , pid->setpoint);
+              serialAddJsonObject("Output"    , pid->output);
+              serialAddJsonObject("kp"        , pid->GetKp());
+              serialAddJsonObject("ki"        , pid->GetKi());
+              serialAddJsonObject("kd"        , pid->GetKd());
             serialEndJsonObject();
           #endif
           #if defined DEBUG_PID_GRAPH
             serialGraphPIDs(pid);
           #endif
-  servo.writeMicroseconds(pid.output);
-  uint8_t servo_status = map(pid.output, pid.minOutputGraph(), pid.maxOutputGraph(), 0, 127);
-  tempControl.setControl.servo_status = servo_status;
+  servo->writeMicroseconds(pid->output);
+  uint8_t servo_status = map(pid->output, pid->minOutputGraph(), pid->maxOutputGraph(), 0, 127);
+  tempControl->setControl.servo_status = servo_status;
 }
 
-void computeTopPID (void)     {computeTempPID(topPID,    topTempControl,    topServo);}
-void computeBottomPID (void)  {computeTempPID(bottomPID, bottomTempControl, bottomServo);}
+void computeTopPID (void)     {computeTempPID(&topPID,    &topTempControl,    &topServo);}
+void computeBottomPID (void)  {computeTempPID(&bottomPID, &bottomTempControl, &bottomServo);}
 
 void computeConveyorPID (void)
 {
