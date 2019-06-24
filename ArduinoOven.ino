@@ -213,7 +213,7 @@
 // ###############################################################
 
 String stringifyDouble (double number) {
-  char buffer[6];
+  char buffer[10];
   if (number == int(number))              return String(int(number));
   else if (number > 0) {
     if      (number < 0.1)                return String(dtostrf(number,5,4, buffer)).substring(1);
