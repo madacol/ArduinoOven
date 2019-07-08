@@ -339,7 +339,7 @@ class SetControl : public Block {
     }
 
   public:
-    double value;
+    double* value;
     uint8_t servo_status;
     void setCoordinates(int x, int y) {
       startX = x;
@@ -355,7 +355,7 @@ class SetControl : public Block {
         myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
         myGLCD.print(number_str, startX+6, startY+11);
     };
-    void draw(void) {draw(value);};
+    void draw(void) {draw(*value);};
 };
 
 class PlusButton : public Block {
@@ -486,6 +486,8 @@ class EncoderSensor : public Sensors {
 class Control : public Coordinates {
   public:
 
+    double setpoint;
+
     // Amount to increase/decrease setcontrol
     double short_event_amount = 0.1;
     double long_event_amount = 1;
@@ -510,9 +512,10 @@ class Control : public Coordinates {
       plusButton.draw();
       sensors.draw();
     };
-    virtual void draw(void) {draw(setControl.value);};
-    virtual void decreaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value-=amount;  setControl.draw();}
-    virtual void increaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value+=amount;  setControl.draw();}
+    virtual void draw(void) {draw(*setControl.value);};
+    virtual double amountToChange(byte event){ return (event==LONG_HOLD_EVENT) ? long_event_amount : short_event_amount; }
+    virtual void decreaseSetControl(byte event) {setpoint-=amountToChange(event);  setControl.draw();}
+    virtual void increaseSetControl(byte event) {setpoint+=amountToChange(event);  setControl.draw();}
 } conveyorControl;
 
 class TempControl : public Control {
@@ -541,7 +544,7 @@ class TempControl : public Control {
       plusButton.draw();
       sensors.draw();
     };
-    void draw(void) {draw(setControl.value);};
+    void draw(void) {draw(*setControl.value);};
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1,
                  PIN_CS_TOP_TEMP_SENSOR_2
@@ -555,7 +558,7 @@ class Pid : public PID {
     const String name;
     double kp, ki, kd;
     double input, output, setpoint;
-    int minOutput, startOutput, maxOutput;
+    double minOutput, startOutput, maxOutput;
     byte EEPROMaddress, outputLimitsEEPROMaddress;
     Pid(String _name, double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
       name(_name),
@@ -592,9 +595,9 @@ class Pid : public PID {
       pid.kp = kp*10;
       pid.ki = ki*10000;
       pid.kd = kd*10;
-      pid.minOutput   = minOutput;
-      pid.startOutput = startOutput;
-      pid.maxOutput   = maxOutput;
+      pid.minOutput   = (int)minOutput;
+      pid.startOutput = (int)startOutput;
+      pid.maxOutput   = (int)maxOutput;
       EEPROM.put(EEPROMaddress, pid);
     }
     void loadParameters (void) {
@@ -644,9 +647,9 @@ class Profile : public Block {
 
     void load(void)
     {
-      topTempControl.setControl.value = topTemp;
-      conveyorControl.setControl.value = cookTime;
-      bottomTempControl.setControl.value = bottomTemp;
+      topTempControl.setpoint = topTemp;
+      conveyorControl.setpoint = cookTime;
+      bottomTempControl.setpoint = bottomTemp;
       isActive = true;
       draw();
       topTempControl.setControl.draw();
@@ -662,9 +665,9 @@ class Profile : public Block {
 
     void save(void)
     {
-      topTemp = topTempControl.setControl.value;
-      cookTime = conveyorControl.setControl.value;
-      bottomTemp = bottomTempControl.setControl.value;
+      topTemp = topTempControl.setpoint;
+      cookTime = conveyorControl.setpoint;
+      bottomTemp = bottomTempControl.setpoint;
       isActive = true;
       saveToEEPROM();
       draw();
@@ -893,6 +896,9 @@ void drawEverything(void)
 
 void controlSetpoints (void) {
   state = CONTROLLING_SETPOINTS;
+  topTempControl.setControl.value = & topTempControl.setpoint;
+  conveyorControl.setControl.value = & conveyorControl.setpoint;
+  bottomTempControl.setControl.value = & bottomTempControl.setpoint;
   bottomTempControl.setControl.lowlight();
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
@@ -903,6 +909,9 @@ void controlSetpoints (void) {
 }
 void controlBottomPID (void) {
   state = CONTROLLING_BOTTOM_PID;
+  topTempControl.setControl.value = & bottomPID.kp;
+  conveyorControl.setControl.value = & bottomPID.ki;
+  bottomTempControl.setControl.value = & bottomPID.kd;
   bottomTempControl.sensors.highlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
@@ -910,6 +919,9 @@ void controlBottomPID (void) {
 }
 void controlTopPID (void) {
   state = CONTROLLING_TOP_PID;
+  topTempControl.setControl.value = & topPID.kp;
+  conveyorControl.setControl.value = & topPID.ki;
+  bottomTempControl.setControl.value = & topPID.kd;
   topTempControl.sensors.highlight();
   bottomTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
@@ -917,6 +929,9 @@ void controlTopPID (void) {
 }
 void controlConveyorPID (void) {
   state = CONTROLLING_CONVEYOR_PID;
+  topTempControl.setControl.value = & conveyorPID.kp;
+  conveyorControl.setControl.value = & conveyorPID.ki;
+  bottomTempControl.setControl.value = & conveyorPID.kd;
   conveyorControl.sensors.highlight();
   topTempControl.sensors.lowlight();
   bottomTempControl.sensors.lowlight();
@@ -957,6 +972,9 @@ void showConveyorPIDGraph (void) {
 }
 void controlTopOutputLimits (void) {
   state = CONTROLLING_TOP_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & topPID.minOutput;
+  conveyorControl.setControl.value = & topPID.startOutput;
+  bottomTempControl.setControl.value = & topPID.maxOutput;
   topTempControl.setControl.highlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.lowlight();
@@ -964,6 +982,9 @@ void controlTopOutputLimits (void) {
 }
 void controlConveyorOutputLimits (void) {
   state = CONTROLLING_CONVEYOR_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & conveyorPID.minOutput;
+  conveyorControl.setControl.value = & conveyorPID.startOutput;
+  bottomTempControl.setControl.value = & conveyorPID.maxOutput;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.highlight();
   bottomTempControl.setControl.lowlight();
@@ -971,6 +992,9 @@ void controlConveyorOutputLimits (void) {
 }
 void controlBottomOutputLimits (void) {
   state = CONTROLLING_BOTTOM_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & bottomPID.minOutput;
+  conveyorControl.setControl.value = & bottomPID.startOutput;
+  bottomTempControl.setControl.value = & bottomPID.maxOutput;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.highlight();
@@ -1426,7 +1450,7 @@ void computeTempPID (Pid* pid, TempControl* tempControl, Servo* servo)
   if (temperature > 0)   pid->input = temperature;
   else tempControl->sensors.showError("No valid reads in temperature");
 
-  pid->setpoint = tempControl->setControl.value;
+  pid->setpoint = tempControl->setpoint;
   double gap = pid->setpoint - pid->input;
   if ( gap > PID_MANUAL_THRESHOLD ) {
     pid->SetMode(MANUAL);
@@ -1468,17 +1492,17 @@ void computeConveyorPID (void)
   long computeConveyorTime = millis();
   static int oldSetcontrolValue;
   static bool isReverse;
-  if (conveyorControl.setControl.value != oldSetcontrolValue)
+  if (conveyorControl.setpoint != oldSetcontrolValue)
   {
-    isReverse = ( conveyorControl.setControl.value < 0 );
+    isReverse = ( conveyorControl.setpoint < 0 );
     digitalWrite(CONVEYOR_L298N_DIR1_PIN, (isReverse?HIGH:LOW) );
     digitalWrite(CONVEYOR_L298N_DIR2_PIN, (isReverse?LOW:HIGH) );
-    oldSetcontrolValue = conveyorControl.setControl.value;
+    oldSetcontrolValue = conveyorControl.setpoint;
   }
   if (isReverse)  encoderSteps_counted = -encoderSteps_counted;
   long encoderStepsCounter_duration = computeConveyorTime - last_computeConveyorTime;
   double stepsPerMs_real = (double)encoderSteps_counted / encoderStepsCounter_duration;
-  double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
+  double msToCrossOven_goal = abs(conveyorControl.setpoint) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
   double stepsPerMs_goal = STEPS_TO_CROSS_OVEN__TIME_CORRECTED / msToCrossOven_goal;
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
