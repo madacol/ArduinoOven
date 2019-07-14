@@ -1,9 +1,9 @@
 // Serial Options
 //#define DEBUG
-#define DEBUG_JSON
+//#define DEBUG_JSON
+  #define DEBUG_PID_JSON
 #if defined DEBUG_JSON
   #define DEBUG_CONVEYOR_PID_JSON
-  #define DEBUG_PID_JSON
   #define DEBUG_SENSOR_TEMP_JSON
 #endif
 #if defined DEBUG
