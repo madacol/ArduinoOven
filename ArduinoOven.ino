@@ -897,12 +897,12 @@ void controlSetpoints (void) {
   topTempControl.setControl.value = & topTempControl.setpoint;
   conveyorControl.setControl.value = & conveyorControl.setpoint;
   bottomTempControl.setControl.value = & bottomTempControl.setpoint;
-  bottomTempControl.setControl.lowlight();
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
-  bottomTempControl.sensors.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlBottomPID (void) {
@@ -910,9 +910,12 @@ void controlBottomPID (void) {
   topTempControl.setControl.value = & bottomPID.kp;
   conveyorControl.setControl.value = & bottomPID.ki;
   bottomTempControl.setControl.value = & bottomPID.kd;
-  bottomTempControl.sensors.highlight();
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.highlight();
   drawEverything();
 }
 void controlTopPID (void) {
@@ -920,9 +923,12 @@ void controlTopPID (void) {
   topTempControl.setControl.value = & topPID.kp;
   conveyorControl.setControl.value = & topPID.ki;
   bottomTempControl.setControl.value = & topPID.kd;
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.highlight();
-  bottomTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlConveyorPID (void) {
@@ -930,8 +936,11 @@ void controlConveyorPID (void) {
   topTempControl.setControl.value = & conveyorPID.kp;
   conveyorControl.setControl.value = & conveyorPID.ki;
   bottomTempControl.setControl.value = & conveyorPID.kd;
-  conveyorControl.sensors.highlight();
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
+  conveyorControl.sensors.highlight();
   bottomTempControl.sensors.lowlight();
   drawEverything();
 }
@@ -976,6 +985,9 @@ void controlTopOutputLimits (void) {
   topTempControl.setControl.highlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.lowlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlConveyorOutputLimits (void) {
@@ -986,6 +998,9 @@ void controlConveyorOutputLimits (void) {
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.highlight();
   bottomTempControl.setControl.lowlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlBottomOutputLimits (void) {
@@ -996,6 +1011,9 @@ void controlBottomOutputLimits (void) {
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.highlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 
