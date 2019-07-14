@@ -1569,7 +1569,10 @@ void drawGraphPoint()
 
 void setup()
 {
+  // SPI is used to communicate with the thermocouples' drivers
   SPI.begin();
+
+  // Serial init
   Serial.begin(38400);
   Serial.println("ArduinoOven");
 
@@ -1597,8 +1600,8 @@ void setup()
     topPID.loadParameters();
     bottomPID.loadParameters();
     conveyorPID.loadParameters();
-
-  // Servos
+ 
+  // Servos Init
     topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
     bottomServo.attach(BOTTOM_SERVO_PIN);   bottomServo.writeMicroseconds(bottomPID.startOutput);
     pinMode(CONVEYOR_L298N_PWM      , OUTPUT);
