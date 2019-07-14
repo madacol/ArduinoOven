@@ -260,32 +260,34 @@ class Coordinates {
 };
 class Block : public Coordinates {
   public:
-    uint16_t backgroundColor = BLACK;
-    uint16_t foregroundColor = WHITE;
+    uint16_t errorbackgroundColor = MAGENTA;
+    uint16_t errorforegroundColor = WHITE;
     uint16_t highlightbackgroundColor = GREEN;
     uint16_t highlightforegroundColor = BLACK;
     uint16_t lowlightbackgroundColor = BLACK;
     uint16_t lowlightforegroundColor = WHITE;
+    uint16_t* backgroundColor = & lowlightbackgroundColor;
+    uint16_t* foregroundColor = & lowlightforegroundColor;
     uint16_t old_backgroundColor;
     long lastTimeSinceError;
     bool isErrorActive = false;
 
-    void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
-    void lowlight(void)  { backgroundColor = lowlightbackgroundColor;  foregroundColor = lowlightforegroundColor; };
+    void highlight(void) { backgroundColor = & highlightbackgroundColor; foregroundColor = & highlightforegroundColor; };
+    void lowlight(void)  { backgroundColor = & lowlightbackgroundColor;  foregroundColor = & lowlightforegroundColor; };
     void drawBackground (void) {
-      myGLCD.setColor(backgroundColor);
+      myGLCD.setColor(*backgroundColor);
         myGLCD.fillRect(startX, startY, endX, endY);
     }
     void drawBackgroundIfHasChanged (void) {
-      if (old_backgroundColor != backgroundColor) {
+      if (old_backgroundColor != *backgroundColor) {
         drawBackground();
-        old_backgroundColor = backgroundColor;
+        old_backgroundColor = *backgroundColor;
       }
     }
     void showError (void) {
       lastTimeSinceError = millis();
-      backgroundColor = MAGENTA;
-      foregroundColor = WHITE;
+      backgroundColor = & errorbackgroundColor;
+      foregroundColor = & errorforegroundColor;
       isErrorActive = true;
     };
     void showError (String str) {
@@ -304,12 +306,10 @@ class MinusButton : public Block {
   public:
     void draw(void) {
       drawBackground();
-      myGLCD.setColor(foregroundColor);
+      myGLCD.setColor(*foregroundColor);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     MinusButton() {
-      backgroundColor = BLUE;
-      foregroundColor = BLACK;
       lowlightbackgroundColor = BLUE;
       lowlightforegroundColor = BLACK;
     }
@@ -349,8 +349,8 @@ class SetControl : public Block {
     };
     void draw(double number) {
       drawBackground();
-      foregroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      lowlightforegroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         String number_str = stringifyDouble(number);
         myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
         myGLCD.print(number_str, startX+6, startY+11);
@@ -362,13 +362,11 @@ class PlusButton : public Block {
   public:
     void draw(void) {
       drawBackground();
-      myGLCD.setColor(foregroundColor);
+      myGLCD.setColor(*foregroundColor);
         myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     PlusButton() {
-      backgroundColor = RED;
-      foregroundColor = BLACK;
       lowlightbackgroundColor = RED;
       lowlightforegroundColor = BLACK;
     }
@@ -398,7 +396,7 @@ class TempSensors : public Sensors {
     void draw(void) {
       if ( isErrorActive and ERROR_DURATION_MS < millis() - lastTimeSinceError )    removeError();
       drawBackgroundIfHasChanged();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
           myGLCD.print(String(int(value1Avg)), startX+7, startY+7);
           myGLCD.print(String(int(value2Avg)), startX+7, startY+35);
@@ -470,7 +468,7 @@ class EncoderSensor : public Sensors {
 
     void draw(void) {
       drawBackground();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         String value_str = stringifyDouble(value);
         if (value_str.length() <= 3) {
           myGLCD.setTextSize(SENSOR_TEXT_SIZE);
@@ -636,7 +634,7 @@ class Profile : public Block {
       if (isActive) highlight();
       else lowlight();
       drawBackground();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
           myGLCD.print(String(id+1), startX+9 , startY+9);
         myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
