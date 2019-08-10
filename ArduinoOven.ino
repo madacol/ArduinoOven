@@ -80,18 +80,22 @@
 // PID
   #include <PID_v1.h>
   #define PID_MANUAL_THRESHOLD  50
+  // Precision
+    #define PID_PRECISION_KP    1
+    #define PID_PRECISION_KI    0.001
+    #define PID_PRECISION_KD    10
   // Top
-    #define TOP_PID_KP          5
-    #define TOP_PID_KI          0.002
-    #define TOP_PID_KD          1
+    #define TOP_PID_KP          PID_PRECISION_KP*100
+    #define TOP_PID_KI          PID_PRECISION_KI*100
+    #define TOP_PID_KD          PID_PRECISION_KD*100
   // Conveyor
     #define CONVEYOR_PID_KP     3
     #define CONVEYOR_PID_KI     0.2
     #define CONVEYOR_PID_KD     0
   // Bottom
-    #define BOTTOM_PID_KP       5
-    #define BOTTOM_PID_KI       0.001
-    #define BOTTOM_PID_KD       1
+    #define BOTTOM_PID_KP       PID_PRECISION_KP*100
+    #define BOTTOM_PID_KI       PID_PRECISION_KI*100
+    #define BOTTOM_PID_KD       PID_PRECISION_KD*100
   // min/max PWM width in uS
     #define TOP_PID_MIN_WIDTH       780
     #define TOP_PID_MAX_WIDTH       1200
@@ -574,12 +578,12 @@ class Pid : public PID {
 
     void updateOutputLimits(void) {SetOutputLimits(minOutput, maxOutput);};
 
-    void increaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp+=scale*0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
-    void decreaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp-=scale*0.1;    updateTuning(); topTempControl.setControl.draw(kp);};
-    void increaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki+=scale*0.0001; updateTuning(); conveyorControl.setControl.draw(ki);};
-    void decreaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki-=scale*0.0001; updateTuning(); conveyorControl.setControl.draw(ki);};
-    void increaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd+=scale*0.1;    updateTuning(); bottomTempControl.setControl.draw(kd);};
-    void decreaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd-=scale*0.1;    updateTuning(); bottomTempControl.setControl.draw(kd);};
+    void increaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp+=scale*PID_PRECISION_KP;   updateTuning();   topTempControl.setControl.draw(kp);};
+    void decreaseKp (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kp-=scale*PID_PRECISION_KP;   updateTuning();   topTempControl.setControl.draw(kp);};
+    void increaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki+=scale*PID_PRECISION_KI;   updateTuning();   conveyorControl.setControl.draw(ki);};
+    void decreaseKi (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   ki-=scale*PID_PRECISION_KI;   updateTuning();   conveyorControl.setControl.draw(ki);};
+    void increaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd+=scale*PID_PRECISION_KD;   updateTuning();   bottomTempControl.setControl.draw(kd);};
+    void decreaseKd (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   kd-=scale*PID_PRECISION_KD;   updateTuning();   bottomTempControl.setControl.draw(kd);};
 
     void increaseMinOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   minOutput+=  scale*1;   updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
     void decreaseMinOutput   (byte event) {byte scale=(event==LONG_HOLD_EVENT)?10:1;   minOutput-=  scale*1;   updateOutputLimits();   topTempControl.setControl.draw    (minOutput);};
@@ -590,9 +594,9 @@ class Pid : public PID {
 
     void saveParameters (void) {
       PidEEPROM pid;
-      pid.kp = kp*10;
-      pid.ki = ki*10000;
-      pid.kd = kd*10;
+      pid.kp = (int)(kp/PID_PRECISION_KP);
+      pid.ki = (int)(ki/PID_PRECISION_KI);
+      pid.kd = (int)(kd/PID_PRECISION_KD);
       pid.minOutput   = (int)minOutput;
       pid.startOutput = (int)startOutput;
       pid.maxOutput   = (int)maxOutput;
@@ -601,9 +605,9 @@ class Pid : public PID {
     void loadParameters (void) {
       PidEEPROM pid;
       EEPROM.get(EEPROMaddress, pid);
-      if (pid.kp          >= 0 and pid.kp          < 1000)   kp          = pid.kp/10.0;
-      if (pid.ki          >= 0 and pid.ki          < 1000)   ki          = pid.ki/10000.0;
-      if (pid.kd          >= 0 and pid.kd          < 1000)   kd          = pid.kd/10.0;
+      if (pid.kp          >= 0 and pid.kp          < 10000)  kp          = pid.kp*PID_PRECISION_KP;
+      if (pid.ki          >= 0 and pid.ki          < 10000)  ki          = pid.ki*PID_PRECISION_KI;
+      if (pid.kd          >= 0 and pid.kd          < 10000)  kd          = pid.kd*PID_PRECISION_KD;
       if (pid.minOutput   >= 0 and pid.minOutput   < 2000)   minOutput   = pid.minOutput;
       if (pid.startOutput >= 0 and pid.startOutput < 2000)   startOutput = pid.startOutput;
       if (pid.maxOutput   >= 0 and pid.maxOutput   < 2000)   maxOutput   = pid.maxOutput;
