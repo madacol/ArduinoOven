@@ -1,12 +1,13 @@
 // Serial Options
 //#define DEBUG
-#define DEBUG_JSON
+//#define DEBUG_JSON
+  #define DEBUG_PID_JSON
 #if defined DEBUG_JSON
   #define DEBUG_CONVEYOR_PID_JSON
-  #define DEBUG_PID_JSON
   #define DEBUG_SENSOR_TEMP_JSON
 #endif
 #if defined DEBUG
+  #define DEBUG_TOUCHSCREEN
   #define DEBUG_SENSOR_SHOW_ERROR
   #define DEBUG_PID_GRAPH
 #endif
@@ -212,7 +213,7 @@
 // ###############################################################
 
 String stringifyDouble (double number) {
-  char buffer[6];
+  char buffer[10];
   if (number == int(number))              return String(int(number));
   else if (number > 0) {
     if      (number < 0.1)                return String(dtostrf(number,5,4, buffer)).substring(1);
@@ -259,32 +260,34 @@ class Coordinates {
 };
 class Block : public Coordinates {
   public:
-    uint16_t backgroundColor = BLACK;
-    uint16_t foregroundColor = WHITE;
+    uint16_t errorbackgroundColor = MAGENTA;
+    uint16_t errorforegroundColor = WHITE;
     uint16_t highlightbackgroundColor = GREEN;
     uint16_t highlightforegroundColor = BLACK;
     uint16_t lowlightbackgroundColor = BLACK;
     uint16_t lowlightforegroundColor = WHITE;
+    uint16_t* backgroundColor = & lowlightbackgroundColor;
+    uint16_t* foregroundColor = & lowlightforegroundColor;
     uint16_t old_backgroundColor;
     long lastTimeSinceError;
     bool isErrorActive = false;
 
-    void highlight(void) { backgroundColor = highlightbackgroundColor; foregroundColor = highlightforegroundColor; };
-    void lowlight(void)  { backgroundColor = lowlightbackgroundColor;  foregroundColor = lowlightforegroundColor; };
+    void highlight(void) { backgroundColor = & highlightbackgroundColor; foregroundColor = & highlightforegroundColor; };
+    void lowlight(void)  { backgroundColor = & lowlightbackgroundColor;  foregroundColor = & lowlightforegroundColor; };
     void drawBackground (void) {
-      myGLCD.setColor(backgroundColor);
+      myGLCD.setColor(*backgroundColor);
         myGLCD.fillRect(startX, startY, endX, endY);
     }
     void drawBackgroundIfHasChanged (void) {
-      if (old_backgroundColor != backgroundColor) {
+      if (old_backgroundColor != *backgroundColor) {
         drawBackground();
-        old_backgroundColor = backgroundColor;
+        old_backgroundColor = *backgroundColor;
       }
     }
     void showError (void) {
       lastTimeSinceError = millis();
-      backgroundColor = MAGENTA;
-      foregroundColor = WHITE;
+      backgroundColor = & errorbackgroundColor;
+      foregroundColor = & errorforegroundColor;
       isErrorActive = true;
     };
     void showError (String str) {
@@ -303,12 +306,10 @@ class MinusButton : public Block {
   public:
     void draw(void) {
       drawBackground();
-      myGLCD.setColor(foregroundColor);
+      myGLCD.setColor(*foregroundColor);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     MinusButton() {
-      backgroundColor = BLUE;
-      foregroundColor = BLACK;
       lowlightbackgroundColor = BLUE;
       lowlightforegroundColor = BLACK;
     }
@@ -338,7 +339,7 @@ class SetControl : public Block {
     }
 
   public:
-    double value;
+    double* value;
     uint8_t servo_status;
     void setCoordinates(int x, int y) {
       startX = x;
@@ -348,26 +349,24 @@ class SetControl : public Block {
     };
     void draw(double number) {
       drawBackground();
-      foregroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      lowlightforegroundColor = map_7Bits_to_RGB565FromBlueToRed(servo_status);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         String number_str = stringifyDouble(number);
         myGLCD.setTextSize( getFontSize(number_str, SET_CONTROL_TEXT_SIZE) );
         myGLCD.print(number_str, startX+6, startY+11);
     };
-    void draw(void) {draw(value);};
+    void draw(void) {draw(*value);};
 };
 
 class PlusButton : public Block {
   public:
     void draw(void) {
       drawBackground();
-      myGLCD.setColor(foregroundColor);
+      myGLCD.setColor(*foregroundColor);
         myGLCD.fillRect(startX+27, startY+15, startX+34, startY+46);
         myGLCD.fillRect(startX+15, startY+27, startX+46, startY+34);
     };
     PlusButton() {
-      backgroundColor = RED;
-      foregroundColor = BLACK;
       lowlightbackgroundColor = RED;
       lowlightforegroundColor = BLACK;
     }
@@ -397,7 +396,7 @@ class TempSensors : public Sensors {
     void draw(void) {
       if ( isErrorActive and ERROR_DURATION_MS < millis() - lastTimeSinceError )    removeError();
       drawBackgroundIfHasChanged();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         myGLCD.setTextSize(SENSOR_TEXT_SIZE);
           myGLCD.print(String(int(value1Avg)), startX+7, startY+7);
           myGLCD.print(String(int(value2Avg)), startX+7, startY+35);
@@ -469,7 +468,7 @@ class EncoderSensor : public Sensors {
 
     void draw(void) {
       drawBackground();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         String value_str = stringifyDouble(value);
         if (value_str.length() <= 3) {
           myGLCD.setTextSize(SENSOR_TEXT_SIZE);
@@ -484,6 +483,8 @@ class EncoderSensor : public Sensors {
 
 class Control : public Coordinates {
   public:
+
+    double setpoint;
 
     // Amount to increase/decrease setcontrol
     double short_event_amount = 0.1;
@@ -509,9 +510,10 @@ class Control : public Coordinates {
       plusButton.draw();
       sensors.draw();
     };
-    virtual void draw(void) {draw(setControl.value);};
-    virtual void decreaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value-=amount;  setControl.draw();}
-    virtual void increaseSetControl(byte event) {double amount=(event==LONG_HOLD_EVENT)?long_event_amount:short_event_amount;  setControl.value+=amount;  setControl.draw();}
+    virtual void draw(void) {draw(*setControl.value);};
+    virtual double amountToChange(byte event){ return (event==LONG_HOLD_EVENT) ? long_event_amount : short_event_amount; }
+    virtual void decreaseSetControl(byte event) {setpoint-=amountToChange(event);  setControl.draw();}
+    virtual void increaseSetControl(byte event) {setpoint+=amountToChange(event);  setControl.draw();}
 } conveyorControl;
 
 class TempControl : public Control {
@@ -540,7 +542,7 @@ class TempControl : public Control {
       plusButton.draw();
       sensors.draw();
     };
-    void draw(void) {draw(setControl.value);};
+    void draw(void) {draw(*setControl.value);};
 // TempControl(SensorCS1, SensorCS2)
 } topTempControl(PIN_CS_TOP_TEMP_SENSOR_1,
                  PIN_CS_TOP_TEMP_SENSOR_2
@@ -554,7 +556,7 @@ class Pid : public PID {
     const String name;
     double kp, ki, kd;
     double input, output, setpoint;
-    int minOutput, startOutput, maxOutput;
+    double minOutput, startOutput, maxOutput;
     byte EEPROMaddress, outputLimitsEEPROMaddress;
     Pid(String _name, double _kp, double _ki, double _kd, byte pOn, byte DIR, byte address):
       name(_name),
@@ -591,9 +593,9 @@ class Pid : public PID {
       pid.kp = kp*10;
       pid.ki = ki*10000;
       pid.kd = kd*10;
-      pid.minOutput   = minOutput;
-      pid.startOutput = startOutput;
-      pid.maxOutput   = maxOutput;
+      pid.minOutput   = (int)minOutput;
+      pid.startOutput = (int)startOutput;
+      pid.maxOutput   = (int)maxOutput;
       EEPROM.put(EEPROMaddress, pid);
     }
     void loadParameters (void) {
@@ -632,7 +634,7 @@ class Profile : public Block {
       if (isActive) highlight();
       else lowlight();
       drawBackground();
-      myGLCD.setTextColor(foregroundColor, backgroundColor);
+      myGLCD.setTextColor(*foregroundColor, *backgroundColor);
         myGLCD.setTextSize(PROFILE_ID_TEXT_SIZE);
           myGLCD.print(String(id+1), startX+9 , startY+9);
         myGLCD.setTextSize(PROFILE_PARAM_TEXT_SIZE);
@@ -643,9 +645,9 @@ class Profile : public Block {
 
     void load(void)
     {
-      topTempControl.setControl.value = topTemp;
-      conveyorControl.setControl.value = cookTime;
-      bottomTempControl.setControl.value = bottomTemp;
+      topTempControl.setpoint = topTemp;
+      conveyorControl.setpoint = cookTime;
+      bottomTempControl.setpoint = bottomTemp;
       isActive = true;
       draw();
       topTempControl.setControl.draw();
@@ -661,9 +663,9 @@ class Profile : public Block {
 
     void save(void)
     {
-      topTemp = topTempControl.setControl.value;
-      cookTime = conveyorControl.setControl.value;
-      bottomTemp = bottomTempControl.setControl.value;
+      topTemp = topTempControl.setpoint;
+      cookTime = conveyorControl.setpoint;
+      bottomTemp = bottomTempControl.setpoint;
       isActive = true;
       saveToEEPROM();
       draw();
@@ -759,6 +761,9 @@ TSPoint readResistiveTouch(void)
 TSPoint getAvgTouchPoint(void)
 {
   TSPoint tp;
+  tp.x=0;
+  tp.y=0;
+  tp.z=0;
   byte count = 0;
   for (byte i=0; i < NUM_OF_SAMPLES; i++)
   {
@@ -889,32 +894,53 @@ void drawEverything(void)
 
 void controlSetpoints (void) {
   state = CONTROLLING_SETPOINTS;
-  bottomTempControl.setControl.lowlight();
+  topTempControl.setControl.value = & topTempControl.setpoint;
+  conveyorControl.setControl.value = & conveyorControl.setpoint;
+  bottomTempControl.setControl.value = & bottomTempControl.setpoint;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
-  bottomTempControl.sensors.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlBottomPID (void) {
   state = CONTROLLING_BOTTOM_PID;
-  bottomTempControl.sensors.highlight();
+  topTempControl.setControl.value = & bottomPID.kp;
+  conveyorControl.setControl.value = & bottomPID.ki;
+  bottomTempControl.setControl.value = & bottomPID.kd;
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.highlight();
   drawEverything();
 }
 void controlTopPID (void) {
   state = CONTROLLING_TOP_PID;
+  topTempControl.setControl.value = & topPID.kp;
+  conveyorControl.setControl.value = & topPID.ki;
+  bottomTempControl.setControl.value = & topPID.kd;
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.highlight();
-  bottomTempControl.sensors.lowlight();
   conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlConveyorPID (void) {
   state = CONTROLLING_CONVEYOR_PID;
-  conveyorControl.sensors.highlight();
+  topTempControl.setControl.value = & conveyorPID.kp;
+  conveyorControl.setControl.value = & conveyorPID.ki;
+  bottomTempControl.setControl.value = & conveyorPID.kd;
+  topTempControl.setControl.lowlight();
+  conveyorControl.setControl.lowlight();
+  bottomTempControl.setControl.lowlight();
   topTempControl.sensors.lowlight();
+  conveyorControl.sensors.highlight();
   bottomTempControl.sensors.lowlight();
   drawEverything();
 }
@@ -953,23 +979,41 @@ void showConveyorPIDGraph (void) {
 }
 void controlTopOutputLimits (void) {
   state = CONTROLLING_TOP_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & topPID.minOutput;
+  conveyorControl.setControl.value = & topPID.startOutput;
+  bottomTempControl.setControl.value = & topPID.maxOutput;
   topTempControl.setControl.highlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.lowlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlConveyorOutputLimits (void) {
   state = CONTROLLING_CONVEYOR_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & conveyorPID.minOutput;
+  conveyorControl.setControl.value = & conveyorPID.startOutput;
+  bottomTempControl.setControl.value = & conveyorPID.maxOutput;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.highlight();
   bottomTempControl.setControl.lowlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 void controlBottomOutputLimits (void) {
   state = CONTROLLING_BOTTOM_OUTPUT_LIMITS;
+  topTempControl.setControl.value = & bottomPID.minOutput;
+  conveyorControl.setControl.value = & bottomPID.startOutput;
+  bottomTempControl.setControl.value = & bottomPID.maxOutput;
   topTempControl.setControl.lowlight();
   conveyorControl.setControl.lowlight();
   bottomTempControl.setControl.highlight();
+  topTempControl.sensors.lowlight();
+  conveyorControl.sensors.lowlight();
+  bottomTempControl.sensors.lowlight();
   drawEverything();
 }
 
@@ -1407,51 +1451,53 @@ void drawSensors (void)
 {
   static byte turn;
   switch (turn) {
-    case TOP_TURN:        topTempControl.sensors.draw(); break;
-    case CONVEYOR_TURN:   conveyorControl.sensors.draw(); break;
-    case BOTTOM_TURN:     bottomTempControl.sensors.draw(); break;
+    case TOP_TURN:        topTempControl.sensors.draw();    topTempControl.setControl.draw(); break;
+    case CONVEYOR_TURN:   conveyorControl.sensors.draw();   conveyorControl.setControl.draw(); break;
+    case BOTTOM_TURN:     bottomTempControl.sensors.draw(); bottomTempControl.setControl.draw(); break;
   }
   if (turn == BOTTOM_TURN)  turn = TOP_TURN;
   else                      turn++;
 }
 
-void computeTempPID (Pid pid, TempControl tempControl, Servo servo);
-void computeTempPID (Pid pid, TempControl tempControl, Servo servo)
+void computeTempPID (Pid* pid, TempControl* tempControl, Servo* servo);
+void computeTempPID (Pid* pid, TempControl* tempControl, Servo* servo)
 {
-  double temperature = tempControl.sensors.read();
-  if (temperature > 0)   pid.input = temperature;
-  else tempControl.sensors.showError("No valid reads in temperature");
+  double temperature = tempControl->sensors.read();
+  if (temperature > 0)   pid->input = temperature;
+  else tempControl->sensors.showError("No valid reads in temperature");
 
-  pid.setpoint = tempControl.setControl.value;
-  double gap = pid.setpoint - pid.input;
+  pid->setpoint = tempControl->setpoint;
+  double gap = pid->setpoint - pid->input;
   if ( gap > PID_MANUAL_THRESHOLD ) {
-    pid.SetMode(MANUAL);
-    pid.output = pid.GetDirection() == DIRECT ? pid.maxOutput : pid.minOutput;
+    pid->SetMode(MANUAL);
+    pid->output = pid->GetDirection() == DIRECT ? pid->maxOutput : pid->minOutput;
   } else {
-    if (pid.GetMode() == MANUAL)  pid.output = pid.GetDirection() == DIRECT ? pid.minOutput : pid.maxOutput;
-    pid.SetMode(AUTOMATIC);
-    pid.Compute();
+    if (pid->GetMode() == MANUAL) {
+      pid->output = pid->GetDirection() == DIRECT ? pid->minOutput : pid->maxOutput;
+      pid->SetMode(AUTOMATIC);
+    }
+    pid->Compute();
   }
           #if defined DEBUG_PID_JSON
-            serialStartJsonObject("PID_"+pid.name);
-              serialAddJsonObject("Input"     , pid.input);
-              serialAddJsonObject("Setpoint"  , pid.setpoint);
-              serialAddJsonObject("Output"    , pid.output);
-              serialAddJsonObject("kp"        , pid.GetKp());
-              serialAddJsonObject("ki"        , pid.GetKi());
-              serialAddJsonObject("kd"        , pid.GetKd());
+            serialStartJsonObject("PID_"+pid->name);
+              serialAddJsonObject("Input"     , pid->input);
+              serialAddJsonObject("Setpoint"  , pid->setpoint);
+              serialAddJsonObject("Output"    , pid->output);
+              serialAddJsonObject("kp"        , pid->GetKp());
+              serialAddJsonObject("ki"        , pid->GetKi());
+              serialAddJsonObject("kd"        , pid->GetKd());
             serialEndJsonObject();
           #endif
           #if defined DEBUG_PID_GRAPH
             serialGraphPIDs(pid);
           #endif
-  servo.writeMicroseconds(pid.output);
-  uint8_t servo_status = map(pid.output, pid.minOutputGraph(), pid.maxOutputGraph(), 0, 127);
-  tempControl.setControl.servo_status = servo_status;
+  servo->writeMicroseconds(pid->output);
+  uint8_t servo_status = map(pid->output, pid->minOutputGraph(), pid->maxOutputGraph(), 0, 127);
+  tempControl->setControl.servo_status = servo_status;
 }
 
-void computeTopPID (void)     {computeTempPID(topPID,    topTempControl,    topServo);}
-void computeBottomPID (void)  {computeTempPID(bottomPID, bottomTempControl, bottomServo);}
+void computeTopPID (void)     {computeTempPID(&topPID,    &topTempControl,    &topServo);}
+void computeBottomPID (void)  {computeTempPID(&bottomPID, &bottomTempControl, &bottomServo);}
 
 void computeConveyorPID (void)
 {
@@ -1462,17 +1508,17 @@ void computeConveyorPID (void)
   long computeConveyorTime = millis();
   static int oldSetcontrolValue;
   static bool isReverse;
-  if (conveyorControl.setControl.value != oldSetcontrolValue)
+  if (conveyorControl.setpoint != oldSetcontrolValue)
   {
-    isReverse = ( conveyorControl.setControl.value < 0 );
+    isReverse = ( conveyorControl.setpoint < 0 );
     digitalWrite(CONVEYOR_L298N_DIR1_PIN, (isReverse?HIGH:LOW) );
     digitalWrite(CONVEYOR_L298N_DIR2_PIN, (isReverse?LOW:HIGH) );
-    oldSetcontrolValue = conveyorControl.setControl.value;
+    oldSetcontrolValue = conveyorControl.setpoint;
   }
   if (isReverse)  encoderSteps_counted = -encoderSteps_counted;
   long encoderStepsCounter_duration = computeConveyorTime - last_computeConveyorTime;
   double stepsPerMs_real = (double)encoderSteps_counted / encoderStepsCounter_duration;
-  double msToCrossOven_goal = abs(conveyorControl.setControl.value) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
+  double msToCrossOven_goal = abs(conveyorControl.setpoint) * 60000; // convert from minutes-to-cross-oven to miliseconds-to-cross-oven
   double stepsPerMs_goal = STEPS_TO_CROSS_OVEN__TIME_CORRECTED / msToCrossOven_goal;
   double encoderSteps_counted_goal = stepsPerMs_goal * encoderStepsCounter_duration;
   conveyorPID.input += encoderSteps_counted - encoderSteps_counted_goal;
@@ -1523,7 +1569,10 @@ void drawGraphPoint()
 
 void setup()
 {
+  // SPI is used to communicate with the thermocouples' drivers
   SPI.begin();
+
+  // Serial init
   Serial.begin(38400);
   Serial.println("ArduinoOven");
 
@@ -1551,8 +1600,8 @@ void setup()
     topPID.loadParameters();
     bottomPID.loadParameters();
     conveyorPID.loadParameters();
-
-  // Servos
+ 
+  // Servos Init
     topServo.attach(TOP_SERVO_PIN);         topServo.writeMicroseconds(topPID.startOutput);
     bottomServo.attach(BOTTOM_SERVO_PIN);   bottomServo.writeMicroseconds(bottomPID.startOutput);
     pinMode(CONVEYOR_L298N_PWM      , OUTPUT);

@@ -1,0 +1,5 @@
+{
+    "arduino.defaultBaudRate": 38400,
+    "C_Cpp.intelliSenseEngine": "Tag Parser",
+    "C_Cpp.intelliSenseEngineFallback": "Enabled"
+}
