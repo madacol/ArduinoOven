@@ -10,3 +10,4 @@ application.macosx
 *.elf
 *.hex
 \.vscode/ipch
+log/
