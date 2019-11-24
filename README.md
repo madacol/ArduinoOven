@@ -11,6 +11,10 @@ We use 3 PID controls, two on burners (top and bottom) and the third on the conv
 
 https://github.com/arduino/arduino-cli
 
+## Install Board and libraries
+
+Need to document this better. The board is an *Arduino mega*, and the libraries are in the `libraries/` folder
+
 ## Compile and Upload firmware
 
 Open terminal, cd into project folder and execute this command
