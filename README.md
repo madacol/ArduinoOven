@@ -32,5 +32,5 @@ Open terminal, cd into project folder and execute this command
 
 2. Add the following cronjobs at the end, changing `projectFolder`
 
-       @reboot {projectFolder}/log.sh
-       */1 * * * * date +"%FT%R" >> {projectFolder}/log/pid.log
+        @reboot {projectFolder}/log.sh
+        */1 * * * * date +"\%FT\%R" >> {projectFolder}/log/pid.log
