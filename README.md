@@ -25,7 +25,8 @@ Need to document this better. The board is an *Arduino mega*, and the libraries 
 
 Open terminal, cd into project folder and execute this command
 
-    arduino-cli compile --warnings default --fqbn arduino:avr:mega && arduino-cli upload --fqbn arduino:avr:mega -p /dev/ttyACM0
+    arduino-cli compile --warnings default --fqbn arduino:avr:mega &&
+    arduino-cli upload --fqbn arduino:avr:mega -p /dev/ttyACM0
 
 
 # Setup logging and graphing PIDs data in a Raspberry Pi
