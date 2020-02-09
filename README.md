@@ -19,7 +19,7 @@ https://github.com/arduino/arduino-cli
 
 ## Install Board and libraries
 
-Need to document this better. The board is an *Arduino mega*, and the libraries are in the `libraries/` folder
+Need to document this better. The board is an *Arduino mega*, and the libraries are in the `/libraries` folder
 
 ## Compile and Upload firmware
 
