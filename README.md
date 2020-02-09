@@ -1,9 +1,15 @@
-This is an Arduino Mega controlled conveyor oven, with semi-independent burners at the top and bottom with their own thermocouple, it's semi-independent because bottom burner affects top.
-This design sacrifices control to get a simpler design compared to those convection based oven.
+# ArduinoOven
 
-We use 3 PID controls, two on burners (top and bottom) and the third on the conveyor. It's possibly an overkill, but it works!.
+This is an Arduino-controlled conveyor oven.
 
-**Video:** https://www.youtube.com/watch?v=MHU5xQRTyus
+It has two burners, at the top and bottom of the chamber, each with its own thermocouple. Each burner has a stepper motor attached to its valve, and is controlled with a PID-control-loop.
+
+The conveyor is moved by a DC motor, with an encoder attached to the shaft, and is also controlled with a PID-control-loop.
+
+## Video
+
+https://www.youtube.com/watch?v=MHU5xQRTyus
+
 
 # Flash Arduino with Raspberry Pi
 
