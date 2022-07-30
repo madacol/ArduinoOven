@@ -1265,14 +1265,13 @@ void bottomSensorLongClick (void) {
 
 /*
 rant (
-  "fucking ugliest code I could come up with, everything was going so fine,
-    I was so proud of my code so far, until this shit happened, it wrecked me, I HATE THIS!
-  I just couldn't make TouchAction's function to execute it's parent's function, when parents can be
+  "Ugh ugliest code I could come up with, everything was going so fine,
+    I was so proud of my code so far, until this happened =(!
+
+  I couldn't make TouchAction's function to execute it's parent's function, when parents can be
     of differents classes. I wanted to declare TouchAction as an object inside an instance of Profile
     and 3 instances of TempControl and make TouchAction::click() to execute it's parent's click()
-    method Profile::click() or TempControl::click(), I just couldn't, maybe something's wrong with my
-    undestanding of OOP. I don't know, maybe all i thought I knew about OOP is just worthless.
-  Anyway, this is the *best* (¬¬ worst ¬¬) that I could come up with"
+    method Profile::click() or TempControl::click()."
 );
 */
 void findObjectFromCoordAndExecuteAction (TSPoint tp, byte event)
